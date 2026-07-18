@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1784383877795,
+      "tag": "0000_lucky_patch",
+      "breakpoints": true
+    }
+  ]
+}
