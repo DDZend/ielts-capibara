@@ -11,10 +11,12 @@ test("all requested routes are present", async () => {
     access(new URL("app/assessment/page.tsx", root)),
     access(new URL("app/dashboard/page.tsx", root)),
     access(new URL("app/mock-test/page.tsx", root)),
+    access(new URL("app/speaking/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
     access(new URL("app/api/mock-results/route.ts", root)),
+    access(new URL("app/api/speaking-feedback/route.ts", root)),
   ]);
 });
 
@@ -109,7 +111,7 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   for (const label of ["Eng", "Рус", "Қаз"]) assert.match(dashboard, new RegExp(`>${label}<`));
   assert.match(dashboard, /aria-controls="capi-coins-panel"/);
   assert.match(dashboard, /aria-controls="profile-panel"/);
-  assert.match(dashboard, /className={`skill-card \${className}`} href="#today-plan"/);
+  assert.match(dashboard, /href={skill === "Speaking" \? "\/speaking" : "#today-plan"}/);
   assert.match(styles, /\.interactive-control:hover/);
   assert.match(styles, /\.skill-card:hover/);
   assert.match(styles, /\.skill-card:focus-visible/);
@@ -124,4 +126,32 @@ test("notification and language controls share hover feedback and Reading uses y
   assert.match(dashboard, /className="language-control dashboard-language interactive-control"/);
   assert.match(styles, /--reading: #b77900/);
   assert.match(styles, /\.skill-card\.reading \.skill-card-icon \{ color: var\(--reading\); background: #fff7d6; \}/);
+});
+
+test("speaking course is protected and links from the dashboard", async () => {
+  const [page, dashboard] = await Promise.all([
+    read("app/speaking/page.tsx"),
+    read("app/dashboard/DashboardClient.tsx"),
+  ]);
+  assert.match(page, /requireChatGPTUser\("\/speaking"\)/);
+  assert.match(dashboard, /skill === "Speaking" \? "\/speaking"/);
+});
+
+test("speaking AI feedback is authenticated, bounded and never persisted", async () => {
+  const api = await read("app/api/speaking-feedback/route.ts");
+  assert.match(api, /const user = await getChatGPTUser\(\)/);
+  assert.match(api, /MAX_AUDIO_BYTES = 8 \* 1024 \* 1024/);
+  assert.match(api, /gpt-4o-transcribe/);
+  assert.match(api, /gpt-5\.6-luna/);
+  assert.match(api, /json_schema/);
+  assert.doesNotMatch(api, /getDb|ensureAppSchema|\.insert\(|\.put\(/);
+});
+
+test("speaking recorder uses temporary browser audio and sends it only for feedback", async () => {
+  const client = await read("app/speaking/SpeakingClient.tsx");
+  assert.match(client, /navigator\.mediaDevices\.getUserMedia/);
+  assert.match(client, /new MediaRecorder/);
+  assert.match(client, /form\.set\("audio", audioBlob/);
+  assert.match(client, /fetch\("\/api\/speaking-feedback"/);
+  assert.doesNotMatch(client, /localStorage|sessionStorage/);
 });
