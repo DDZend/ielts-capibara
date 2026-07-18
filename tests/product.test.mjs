@@ -12,11 +12,13 @@ test("all requested routes are present", async () => {
     access(new URL("app/dashboard/page.tsx", root)),
     access(new URL("app/mock-test/page.tsx", root)),
     access(new URL("app/speaking/page.tsx", root)),
+    access(new URL("app/writing/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
     access(new URL("app/api/mock-results/route.ts", root)),
     access(new URL("app/api/speaking-feedback/route.ts", root)),
+    access(new URL("app/api/writing-feedback/route.ts", root)),
   ]);
 });
 
@@ -111,7 +113,7 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   for (const label of ["Eng", "Рус", "Қаз"]) assert.match(dashboard, new RegExp(`>${label}<`));
   assert.match(dashboard, /aria-controls="capi-coins-panel"/);
   assert.match(dashboard, /aria-controls="profile-panel"/);
-  assert.match(dashboard, /href={skill === "Speaking" \? "\/speaking" : "#today-plan"}/);
+  assert.match(dashboard, /skill === "Writing" \? "\/writing" : "#today-plan"/);
   assert.match(styles, /\.interactive-control:hover/);
   assert.match(styles, /\.skill-card:hover/);
   assert.match(styles, /\.skill-card:focus-visible/);
@@ -153,5 +155,40 @@ test("speaking recorder uses temporary browser audio and sends it only for feedb
   assert.match(client, /new MediaRecorder/);
   assert.match(client, /form\.set\("audio", audioBlob/);
   assert.match(client, /fetch\("\/api\/speaking-feedback"/);
+  assert.doesNotMatch(client, /localStorage|sessionStorage/);
+});
+
+test("speaking video spaces are reserved for the creator's future lessons", async () => {
+  const client = await read("app/speaking/SpeakingClient.tsx");
+  assert.match(client, /Video coming soon/);
+  assert.match(client, /ready for your original explanatory video/);
+  assert.doesNotMatch(client, /takeielts\.britishcouncil\.org\/teach-ielts\/teaching-resources\/videos/);
+});
+
+test("writing course is protected and exposes twelve visually grouped lessons", async () => {
+  const [page, client, dashboard] = await Promise.all([
+    read("app/writing/page.tsx"),
+    read("app/writing/WritingClient.tsx"),
+    read("app/dashboard/DashboardClient.tsx"),
+  ]);
+  assert.match(page, /requireChatGPTUser\("\/writing"\)/);
+  assert.match(dashboard, /skill === "Writing" \? "\/writing"/);
+  const lessonIds = ["line-graph", "bar-chart", "pie-chart", "table", "process", "maps-plans", "mixed-visuals", "opinion", "discussion", "advantages", "problem-solution", "two-part"];
+  for (const id of lessonIds) assert.match(client, new RegExp(`id: "${id}"`));
+  assert.match(client, /Seven ways visual information can be presented/);
+  assert.match(client, /Five common ways the essay question can be framed/);
+});
+
+test("writing feedback is authenticated, bounded and never persisted", async () => {
+  const [api, client] = await Promise.all([
+    read("app/api/writing-feedback/route.ts"),
+    read("app/writing/WritingClient.tsx"),
+  ]);
+  assert.match(api, /const user = await getChatGPTUser\(\)/);
+  assert.match(api, /MAX_ESSAY_CHARACTERS = 20_000/);
+  assert.match(api, /gpt-5\.6-luna/);
+  assert.match(api, /json_schema/);
+  assert.doesNotMatch(api, /getDb|ensureAppSchema|\.insert\(|\.put\(/);
+  assert.match(client, /fetch\("\/api\/writing-feedback"/);
   assert.doesNotMatch(client, /localStorage|sessionStorage/);
 });

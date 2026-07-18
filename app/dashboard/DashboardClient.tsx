@@ -59,7 +59,7 @@ type DashboardStats = {
 
 const modules: { skill: Skill; icon: typeof Mic2; className: string; tasks: string }[] = [
   { skill: "Speaking", icon: Mic2, className: "speaking", tasks: "3 practice prompts" },
-  { skill: "Writing", icon: PenLine, className: "writing", tasks: "2 writing tasks" },
+  { skill: "Writing", icon: PenLine, className: "writing", tasks: "12 video lessons" },
   { skill: "Reading", icon: BookOpen, className: "reading", tasks: "4 reading sets" },
   { skill: "Listening", icon: Headphones, className: "listening", tasks: "3 listening sets" },
 ];
@@ -143,7 +143,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
           <a className="nav-item active" href="#dashboard-top" onClick={() => setSidebarOpen(false)}><span><LayoutDashboard /></span>Dashboard</a>
           <Link className="nav-item prominent" href="/assessment"><span><Zap /></span>Take assessment<ChevronRight /></Link>
           <p>LEARN</p>
-          {modules.map(({ skill, icon: Icon, className }) => <Link key={skill} href={skill === "Speaking" ? "/speaking" : "#modules"} onClick={() => setSidebarOpen(false)} className="nav-item"><span className={className}><Icon /></span>{skill}<ChevronRight /></Link>)}
+          {modules.map(({ skill, icon: Icon, className }) => <Link key={skill} href={skill === "Speaking" ? "/speaking" : skill === "Writing" ? "/writing" : "#modules"} onClick={() => setSidebarOpen(false)} className="nav-item"><span className={className}><Icon /></span>{skill}<ChevronRight /></Link>)}
           <div className="nav-line" />
           <a className="nav-item" href="#progress" onClick={() => setSidebarOpen(false)}><span><BarChart3 /></span>My progress</a>
           <a className="nav-item" href="#live-class" onClick={() => setSidebarOpen(false)}><span><Video /></span>Live classes<span className="nav-badge">2</span></a>
@@ -185,7 +185,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
               <section className="progress-section dashboard-card" id="progress">
                 <div className="card-heading"><div><span className="eyebrow">Latest assessment</span><h2>Your overall progress</h2></div><Link href="/assessment">Reassess <ArrowRight /></Link></div>
                 {latest ? <div className="progress-summary"><div className="progress-ring" style={{ "--progress": `${progress * 3.6}deg` } as React.CSSProperties}><span><b>{score.toFixed(1)}</b><small>of {targetBand.toFixed(1)}</small></span></div><div><h3>{progress}% of the way to your target</h3><p>Your strongest area is <b>{latest.strengthSkill}</b>. Improving <b>{latest.prioritySkill}</b> will give your overall band the biggest lift.</p><div className="progress-line"><span style={{ width: `${progress}%` }} /></div><small>Assessment saved {new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(latest.createdAt))}</small></div></div> : <div className="empty-progress"><Target /><div><h3>No saved assessment yet</h3><p>Complete the diagnostic to see real module bands and a focused study plan.</p></div><Link className="button primary small" href="/assessment">Start now</Link></div>}
-                <div className="skill-grid" id="modules">{modules.map(({ skill, icon: Icon, className, tasks }) => <Link className={`skill-card ${className}`} href={skill === "Speaking" ? "/speaking" : "#today-plan"} aria-label={`Practise ${skill}. ${bands[skill] ? `Current estimate ${bands[skill]?.toFixed(1)}` : "Complete the assessment first"}`} key={skill}><span className="skill-card-icon"><Icon /></span><div><small>{skill}</small><b>{bands[skill]?.toFixed(1) ?? "—"}</b></div><p>{latest ? tasks : "Complete assessment"}</p><ChevronRight className="skill-card-chevron" /></Link>)}</div>
+                <div className="skill-grid" id="modules">{modules.map(({ skill, icon: Icon, className, tasks }) => <Link className={`skill-card ${className}`} href={skill === "Speaking" ? "/speaking" : skill === "Writing" ? "/writing" : "#today-plan"} aria-label={`Practise ${skill}. ${bands[skill] ? `Current estimate ${bands[skill]?.toFixed(1)}` : "Complete the assessment first"}`} key={skill}><span className="skill-card-icon"><Icon /></span><div><small>{skill}</small><b>{bands[skill]?.toFixed(1) ?? "—"}</b></div><p>{latest ? tasks : "Complete assessment"}</p><ChevronRight className="skill-card-chevron" /></Link>)}</div>
               </section>
 
               <section id="today-plan" className="today-card dashboard-card">

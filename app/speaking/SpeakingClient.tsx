@@ -16,7 +16,6 @@ import {
   Lightbulb,
   LockKeyhole,
   Mic2,
-  Play,
   RotateCcw,
   Sparkles,
   Square,
@@ -36,7 +35,6 @@ type Lesson = {
   timing: string;
   summary: string;
   videoTitle: string;
-  videoUrl: string;
   videoFocus: string;
   prompt: string;
   promptNote: string;
@@ -78,9 +76,8 @@ const lessons: Lesson[] = [
     subtitle: "Introduction and interview",
     timing: "4–5 min",
     summary: "Answer familiar questions directly, then add one reason or a specific detail. Aim for two or three natural sentences — not a memorised speech.",
-    videoTitle: "Speaking: fluency and coherence",
-    videoUrl: "https://takeielts.britishcouncil.org/teach-ielts/teaching-resources/videos/speaking-fluency-coherence",
-    videoFocus: "Learn how clear sequencing, relevant detail and a steady pace help an answer feel easy to follow.",
+    videoTitle: "Part 1: warm, natural answers",
+    videoFocus: "Your explanatory lesson about direct answers, relevant detail and a steady, natural pace will appear here.",
     prompt: "Let’s talk about your hometown. What do you like most about the place where you live?",
     promptNote: "Speak for 30–45 seconds. Answer directly, explain why, then add one real example.",
     vocabulary: {
@@ -104,9 +101,8 @@ const lessons: Lesson[] = [
     subtitle: "Individual long turn",
     timing: "3–4 min",
     summary: "Use the one-minute preparation time to make a simple route: introduce the topic, cover the cue points, add a short story and finish with a reflection.",
-    videoTitle: "Speaking: lexical resource",
-    videoUrl: "https://takeielts.britishcouncil.org/teach-ielts/teaching-resources/videos/speaking-lexical-resource",
-    videoFocus: "See how precise vocabulary, paraphrasing and natural collocations can strengthen a two-minute answer.",
+    videoTitle: "Part 2: a confident long turn",
+    videoFocus: "Your explanatory lesson about preparation notes, answer structure and speaking for up to two minutes will appear here.",
     prompt: "Describe a skill you would like to learn. You should say what the skill is, how you would learn it, why it interests you, and explain how it could be useful.",
     promptNote: "Take up to 1 minute to prepare, then speak for 1–2 minutes without stopping.",
     vocabulary: {
@@ -130,9 +126,8 @@ const lessons: Lesson[] = [
     subtitle: "Two-way discussion",
     timing: "4–5 min",
     summary: "Move from your opinion to a reason, an example and a consequence. Compare viewpoints and stay flexible when the examiner asks a follow-up question.",
-    videoTitle: "Speaking: grammatical range and accuracy",
-    videoUrl: "https://takeielts.britishcouncil.org/teach-ielts/teaching-resources/videos/speaking-grammar",
-    videoFocus: "Review how a controlled mix of simple and complex sentences makes abstract ideas clearer.",
+    videoTitle: "Part 3: develop deeper ideas",
+    videoFocus: "Your explanatory lesson about opinions, comparisons, examples and flexible follow-up answers will appear here.",
     prompt: "Why do some people prefer learning new skills online rather than learning them in person?",
     promptNote: "Speak for 45–75 seconds. Give a position, support it, and consider another side.",
     vocabulary: {
@@ -352,12 +347,11 @@ export function SpeakingClient({ userName }: { userName: string }) {
           </div>
 
           <article className="speaking-video-card">
-            <a className="speaking-video-poster" href={lesson.videoUrl} target="_blank" rel="noreferrer" aria-label={`Open official video: ${lesson.videoTitle}`}>
-              <div><span><Video /> Official British Council lesson</span><h3>{lesson.videoTitle}</h3><p>{lesson.videoFocus}</p><b className="speaking-play"><Play fill="currentColor" /> Open video lesson</b></div>
-              <img src="/capi-official.png" alt="Capi Coach presenting the official lesson resource" />
-              <ExternalLink className="video-external" />
-            </a>
-            <footer><LockKeyhole /> The lesson opens on the official British Council website in a new tab.</footer>
+            <div className="speaking-video-poster speaking-video-placeholder" aria-label={`Reserved video space: ${lesson.videoTitle}`}>
+              <div><span><Video /> Your video lesson</span><h3>{lesson.videoTitle}</h3><p>{lesson.videoFocus}</p><b className="speaking-play"><Video /> Video coming soon</b></div>
+              <img src="/capi-official.png" alt="Capi Coach beside the future lesson video" />
+            </div>
+            <footer><Clock3 /> This space is ready for your original explanatory video when filming is complete.</footer>
           </article>
 
           <div className="speaking-after-video"><span>AFTER THE VIDEO</span><i /><small>Complete the three short tasks below</small></div>
