@@ -10,7 +10,7 @@
   --warm: #f7f5ef;
   --speaking: #ff4a2f;
   --writing: #14712f;
-  --reading: #6637ff;
+  --reading: #b77900;
   --listening: #1556ef;
 }
 
@@ -94,12 +94,12 @@ button { cursor: pointer; }
 .module-card::after { content: ""; position: absolute; inset: auto -40px -75px auto; width: 150px; height: 150px; border-radius: 50%; opacity: .55; }
 .module-card.speaking::after { background: #fff0eb; }
 .module-card.writing::after { background: #edf7ec; }
-.module-card.reading::after { background: #f0edff; }
+.module-card.reading::after { background: #fff7d6; }
 .module-card.listening::after { background: #eaf2ff; }
 .module-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 13px; }
 .module-card.speaking .module-icon { background: #fff0eb; color: var(--speaking); }
 .module-card.writing .module-icon { background: #edf7ec; color: var(--writing); }
-.module-card.reading .module-icon { background: #f0edff; color: var(--reading); }
+.module-card.reading .module-icon { background: #fff7d6; color: var(--reading); }
 .module-card.listening .module-icon { background: #eaf2ff; color: var(--listening); }
 .module-card h3 { margin: 22px 0 10px; font-size: 21px; }
 .module-card p { color: var(--muted); font-size: 14px; line-height: 1.65; }
@@ -244,7 +244,7 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .band-grid b { font-size: 24px; }
 .band-grid .speaking > span { color: var(--speaking); background: #fff0eb; }
 .band-grid .writing > span { color: var(--writing); background: #edf7ec; }
-.band-grid .reading > span { color: var(--reading); background: #f0edff; }
+.band-grid .reading > span { color: var(--reading); background: #fff7d6; }
 .band-grid .listening > span { color: var(--listening); background: #eaf2ff; }
 .plan-card { min-height: 260px; border: 1px solid var(--line); border-radius: 17px; background: white; display: grid; grid-template-columns: 1fr 300px; align-items: stretch; overflow: hidden; }
 .plan-copy { padding: 28px 32px; }
@@ -278,7 +278,7 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .nav-item > span:first-child { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 9px; background: #f1f4f1; display: grid; place-items: center; }
 .nav-item > span.speaking { color: var(--speaking); background: #fff0eb; }
 .nav-item > span.writing { color: var(--writing); background: #edf7ec; }
-.nav-item > span.reading { color: var(--reading); background: #f0edff; }
+.nav-item > span.reading { color: var(--reading); background: #fff7d6; }
 .nav-item > span.listening { color: var(--listening); background: #eaf2ff; }
 .nav-item svg { width: 18px; height: 18px; }
 .nav-item > svg { margin-left: auto; width: 15px; color: #9da49f; }
@@ -321,6 +321,8 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .interactive-control:hover { transform: translateY(-2px); border-color: #9cbea4; background: #fbfdfb; box-shadow: 0 8px 18px #1b4b2820; }
 .interactive-control:active { transform: translateY(0) scale(.98); box-shadow: 0 2px 6px #1b4b2818; }
 .interactive-control:focus-visible, .skill-card:focus-visible { outline: 3px solid #7bc19066; outline-offset: 2px; }
+.notification.interactive-control, .dashboard-language.interactive-control { cursor: pointer; }
+.dashboard-language.interactive-control:focus-within { outline: 3px solid #7bc19066; outline-offset: 2px; }
 .topbar-popover { position: absolute; z-index: 70; top: calc(100% + 10px); right: 0; width: 270px; padding: 16px; border: 1px solid #dce6dc; border-radius: 14px; background: white; box-shadow: 0 18px 45px #17321e24; }
 .coins-popover { display: grid; grid-template-columns: 40px 1fr; gap: 11px; }
 .popover-icon { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; }
@@ -390,7 +392,7 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .skill-card.listening { --skill-accent: var(--listening); }
 .skill-card.speaking .skill-card-icon { color: var(--speaking); background: #fff0eb; }
 .skill-card.writing .skill-card-icon { color: var(--writing); background: #edf7ec; }
-.skill-card.reading .skill-card-icon { color: var(--reading); background: #f0edff; }
+.skill-card.reading .skill-card-icon { color: var(--reading); background: #fff7d6; }
 .skill-card.listening .skill-card-icon { color: var(--listening); background: #eaf2ff; }
 .skill-card > div { display: flex; flex-direction: column; }
 .skill-card small { color: var(--muted); font-size: 9px; }
@@ -407,7 +409,7 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .plan-icon svg { width: 17px; }
 .plan-icon.speaking { background: #fff0eb; color: var(--speaking); }
 .plan-icon.writing { background: #edf7ec; color: var(--writing); }
-.plan-icon.reading { background: #f0edff; color: var(--reading); }
+.plan-icon.reading { background: #fff7d6; color: var(--reading); }
 .plan-list article > div { display: flex; flex-direction: column; gap: 3px; }
 .plan-list article b { font-size: 12px; }
 .plan-list article small { color: var(--muted); font-size: 9px; }
@@ -425,7 +427,7 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .activity-icon { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; }
 .activity-icon svg { width: 16px; }
 .activity-icon.assessment { color: var(--green); background: var(--green-soft); }
-.activity-icon.reading { color: var(--reading); background: #f0edff; }
+.activity-icon.reading { color: var(--reading); background: #fff7d6; }
 .activity-icon.speaking { color: var(--speaking); background: #fff0eb; }
 .activity-icon.writing { color: var(--writing); background: #edf7ec; }
 .activity-icon.listening { color: var(--listening); background: #eaf2ff; }
@@ -438,7 +440,7 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .week-days button { aspect-ratio: 1; border: 0; border-radius: 9px; background: #f6f8f6; display: grid; place-items: center; position: relative; font-size: 10px; }
 .week-days button.done { color: var(--green-dark); background: #e8f3e6; }
 .week-days button.today { color: white; background: var(--green); font-weight: 800; }
-.week-days button.planned { color: var(--reading); background: #f0edff; border: 1px solid #d9d0ff; }
+.week-days button.planned { color: var(--reading); background: #fff7d6; border: 1px solid #ead28e; }
 .week-days button.selected { box-shadow: 0 0 0 2px white, 0 0 0 4px var(--green); }
 .week-days button svg { position: absolute; width: 8px; bottom: 3px; }
 .calendar-legend { margin-top: 13px; display: flex; gap: 14px; color: var(--muted); font-size: 8px; }

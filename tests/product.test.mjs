@@ -114,3 +114,14 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   assert.match(styles, /\.skill-card:hover/);
   assert.match(styles, /\.skill-card:focus-visible/);
 });
+
+test("notification and language controls share hover feedback and Reading uses yellow", async () => {
+  const [dashboard, styles] = await Promise.all([
+    read("app/dashboard/DashboardClient.tsx"),
+    read("app/globals.css"),
+  ]);
+  assert.match(dashboard, /className="notification interactive-control"/);
+  assert.match(dashboard, /className="language-control dashboard-language interactive-control"/);
+  assert.match(styles, /--reading: #b77900/);
+  assert.match(styles, /\.skill-card\.reading \.skill-card-icon \{ color: var\(--reading\); background: #fff7d6; \}/);
+});
