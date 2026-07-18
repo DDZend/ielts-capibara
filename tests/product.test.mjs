@@ -13,6 +13,7 @@ test("all requested routes are present", async () => {
     access(new URL("app/mock-test/page.tsx", root)),
     access(new URL("app/speaking/page.tsx", root)),
     access(new URL("app/writing/page.tsx", root)),
+    access(new URL("app/reading/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
@@ -113,7 +114,8 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   for (const label of ["Eng", "Рус", "Қаз"]) assert.match(dashboard, new RegExp(`>${label}<`));
   assert.match(dashboard, /aria-controls="capi-coins-panel"/);
   assert.match(dashboard, /aria-controls="profile-panel"/);
-  assert.match(dashboard, /skill === "Writing" \? "\/writing" : "#today-plan"/);
+  assert.match(dashboard, /skill === "Writing" \? "\/writing"/);
+  assert.match(dashboard, /skill === "Reading" \? "\/reading"/);
   assert.match(styles, /\.interactive-control:hover/);
   assert.match(styles, /\.skill-card:hover/);
   assert.match(styles, /\.skill-card:focus-visible/);
@@ -190,5 +192,29 @@ test("writing feedback is authenticated, bounded and never persisted", async () 
   assert.match(api, /json_schema/);
   assert.doesNotMatch(api, /getDb|ensureAppSchema|\.insert\(|\.put\(/);
   assert.match(client, /fetch\("\/api\/writing-feedback"/);
+  assert.doesNotMatch(client, /localStorage|sessionStorage/);
+});
+
+test("reading course is protected and covers all official task types", async () => {
+  const [page, client, dashboard] = await Promise.all([
+    read("app/reading/page.tsx"),
+    read("app/reading/ReadingClient.tsx"),
+    read("app/dashboard/DashboardClient.tsx"),
+  ]);
+  assert.match(page, /requireChatGPTUser\("\/reading"\)/);
+  assert.match(dashboard, /skill === "Reading" \? "\/reading"/);
+  assert.match(dashboard, /14 strategy lessons/);
+  const lessonIds = ["multiple-choice", "true-false-ng", "yes-no-ng", "matching-information", "matching-headings", "matching-features", "matching-endings", "sentence-completion", "summary-completion", "note-completion", "table-completion", "flow-chart-completion", "diagram-labelling", "short-answer"];
+  for (const id of lessonIds) assert.match(client, new RegExp(`id: "${id}"`));
+  assert.match(client, /Reserved for your original video/);
+});
+
+test("reading practice credits authentic sources and stays temporary", async () => {
+  const client = await read("app/reading/ReadingClient.tsx");
+  for (const source of ["science.nasa.gov", "oceanservice.noaa.gov", "usgs.gov", "nps.gov", "epa.gov", "nih.gov", "energy.gov", "usda.gov"]) {
+    assert.match(client, new RegExp(source.replaceAll(".", "\\.")));
+  }
+  assert.match(client, /Original adaptation, authentic source/);
+  assert.match(client, /It is not an official IELTS passage/);
   assert.doesNotMatch(client, /localStorage|sessionStorage/);
 });
