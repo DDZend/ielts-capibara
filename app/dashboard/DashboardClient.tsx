@@ -29,11 +29,33 @@ import {
   Sparkles,
   Star,
   Target,
+  Trophy,
   Video,
   X,
   Zap,
 } from "lucide-react";
 import type { SavedAssessment, Skill } from "../../lib/assessment";
+import type { SavedMock } from "../../lib/mock";
+import { isWeekend, weekStart } from "../../lib/study-plan";
+
+type DashboardTask = {
+  id: number;
+  taskDate: string;
+  skill: string;
+  title: string;
+  minutes: number;
+  taskType: string;
+  completedAt: string | null;
+  createdAt: string;
+};
+
+type DashboardStats = {
+  points: number;
+  streak: number;
+  completedDaysThisWeek: number;
+  completedTasksToday: number;
+  totalMinutesToday: number;
+};
 
 const modules: { skill: Skill; icon: typeof Mic2; className: string; tasks: string }[] = [
   { skill: "Speaking", icon: Mic2, className: "speaking", tasks: "3 practice prompts" },
@@ -42,23 +64,17 @@ const modules: { skill: Skill; icon: typeof Mic2; className: string; tasks: stri
   { skill: "Listening", icon: Headphones, className: "listening", tasks: "3 listening sets" },
 ];
 
-const planItems = [
-  { time: "09:00", title: "Speaking: long-turn structure", meta: "15 min · Core lesson", icon: Mic2, className: "speaking" },
-  { time: "12:30", title: "Reading: matching headings", meta: "12 min · Timed practice", icon: BookOpen, className: "reading" },
-  { time: "18:00", title: "Writing: contrast sentences", meta: "18 min · Guided task", icon: PenLine, className: "writing" },
-];
-
 const monthDays = [
   { day: 13, state: "done" }, { day: 14, state: "done" }, { day: 15, state: "done" }, { day: 16, state: "today" }, { day: 17, state: "planned" }, { day: 18, state: "" }, { day: 19, state: "" },
 ];
 
-export function DashboardClient({ userName, latest }: { userName: string; latest: SavedAssessment | null }) {
+export function DashboardClient({ userName, latest, initialTasks, recentTasks, initialStats, mocks }: { userName: string; latest: SavedAssessment | null; initialTasks: DashboardTask[]; recentTasks: DashboardTask[]; initialStats: DashboardStats; mocks: SavedMock[] }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [targetOpen, setTargetOpen] = useState(false);
   const [targetBand, setTargetBand] = useState(latest?.targetBand ?? 7);
   const [targetState, setTargetState] = useState<"idle" | "saving" | "saved">("idle");
-  const [completedPlan, setCompletedPlan] = useState<number[]>([]);
+  const [tasks, setTasks] = useState(initialTasks);
   const [selectedDay, setSelectedDay] = useState(16);
   const [reserved, setReserved] = useState(false);
   const [chatInput, setChatInput] = useState("");
@@ -69,6 +85,19 @@ export function DashboardClient({ userName, latest }: { userName: string; latest
   const score = latest?.overallBand ?? 0;
   const progress = latest ? Math.min(100, Math.round((score / targetBand) * 100)) : 0;
   const bands = useMemo(() => ({ Speaking: latest?.speakingBand ?? null, Writing: latest?.writingBand ?? null, Reading: latest?.readingBand ?? null, Listening: latest?.listeningBand ?? null }), [latest]);
+  const completedToday = tasks.filter((task) => task.completedAt).length;
+  const hadCompletedToday = initialStats.completedTasksToday > 0;
+  const hasCompletedToday = completedToday > 0;
+  const liveDays = Math.max(0, initialStats.completedDaysThisWeek + Number(hasCompletedToday && !hadCompletedToday) - Number(!hasCompletedToday && hadCompletedToday));
+  const liveStreak = Math.max(0, initialStats.streak + Number(hasCompletedToday && !hadCompletedToday) - Number(!hasCompletedToday && hadCompletedToday));
+  const livePoints = Math.max(0, initialStats.points + (completedToday - initialStats.completedTasksToday) * 40);
+  const weeklyPercent = Math.min(100, Math.round(liveDays / 5 * 100));
+  const activityTasks = [...tasks.filter((task) => task.completedAt), ...recentTasks.filter((task) => !tasks.some((today) => today.id === task.id))].slice(0, 5);
+  const latestMock = mocks[0] ?? null;
+  const previousMock = mocks[1] ?? null;
+  const mockDoneThisWeek = latestMock?.weekStart === weekStart();
+  const mockDelta = latestMock && previousMock ? latestMock.overallBand - previousMock.overallBand : null;
+  const weekend = isWeekend();
 
   const updateTarget = async (next: number) => {
     setTargetBand(next);
@@ -93,6 +122,14 @@ export function DashboardClient({ userName, latest }: { userName: string; latest
           : "That’s a good question. Start with one clear answer, add a specific example, and review whether every sentence supports the task.";
     setMessages((current) => [...current, { role: "student", text: clean }, { role: "capi", text: reply }]);
     setChatInput("");
+  };
+
+  const toggleTask = async (task: DashboardTask) => {
+    const completed = !task.completedAt;
+    const nextCompletedAt = completed ? new Date().toISOString() : null;
+    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, completedAt: nextCompletedAt } : item));
+    const response = await fetch("/api/study-plan", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: task.id, completed }) }).catch(() => null);
+    if (!response?.ok) setTasks((current) => current.map((item) => item.id === task.id ? task : item));
   };
 
   return (
@@ -121,8 +158,8 @@ export function DashboardClient({ userName, latest }: { userName: string; latest
           <button className="mobile-nav-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation"><Menu /></button>
           <Link className="mobile-dashboard-brand" href="/"><span className="brand-c">C</span><b>IELTS Mastery</b></Link>
           <div className="topbar-actions">
-            <span className="metric"><Star fill="currentColor" /><span><small>Points</small><b>1,260</b></span></span>
-            <span className="metric"><Flame fill="currentColor" /><span><small>Streak</small><b>6 days</b></span></span>
+            <span className="metric"><Star fill="currentColor" /><span><small>Points</small><b>{livePoints.toLocaleString()}</b></span></span>
+            <span className="metric"><Flame fill="currentColor" /><span><small>Streak</small><b>{liveStreak} {liveStreak === 1 ? "day" : "days"}</b></span></span>
             <button className="notification" aria-label="View 2 recent notifications" onClick={() => document.querySelector(".recent-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Bell /><i>2</i></button>
             <label className="language-control dashboard-language"><Languages /><select aria-label="Language"><option>English (UK)</option><option>Русский</option><option>Қазақша</option></select><ChevronDown /></label>
             <span className="profile-chip"><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>Target band {targetBand.toFixed(1)}</small></span></span>
@@ -145,18 +182,20 @@ export function DashboardClient({ userName, latest }: { userName: string; latest
               </section>
 
               <section id="today-plan" className="today-card dashboard-card">
-                <div className="card-heading"><div><span className="eyebrow">Saturday, 18 July</span><h2>Today&apos;s study plan</h2></div><span className="time-total"><Clock3 /> 45 minutes</span></div>
-                <div className="plan-list">{planItems.map(({ time, title, meta, icon: Icon, className }, index) => <article key={title}><time>{time}</time><span className={`plan-icon ${className}`}><Icon /></span><div><b>{title}</b><small>{completedPlan.includes(index) ? "Completed today" : meta}</small></div><button aria-label={`${completedPlan.includes(index) ? "Mark incomplete" : "Complete"} ${title}`} aria-pressed={completedPlan.includes(index)} onClick={() => setCompletedPlan((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} className={index === 0 || completedPlan.includes(index) ? "active" : ""}>{completedPlan.includes(index) ? <Check /> : index === 0 ? <Play fill="currentColor" /> : <ChevronRight />}</button></article>)}</div>
-                <div className="weekly-line"><span><b>This week</b><small>3 of 5 study days complete</small></span><div><i style={{ width: "64%" }} /></div><b>64%</b></div>
+                <div className="card-heading"><div><span className="eyebrow">{new Intl.DateTimeFormat("en", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</span><h2>Today&apos;s study plan</h2></div><span className="time-total"><Clock3 /> {initialStats.totalMinutesToday} minutes</span></div>
+                <div className="plan-list">{tasks.map((task, index) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id} className={task.completedAt ? "completed" : ""}><time>{String(9 + index * 4).padStart(2, "0")}:00</time><span className={`plan-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title}</b><small>{task.completedAt ? "Completed today · +40 points" : `${task.minutes} min · ${task.taskType}`}</small></div><button aria-label={`${task.completedAt ? "Mark incomplete" : "Complete"} ${task.title}`} aria-pressed={Boolean(task.completedAt)} onClick={() => void toggleTask(task)} className={index === 0 || task.completedAt ? "active" : ""}>{task.completedAt ? <Check /> : index === 0 ? <Play fill="currentColor" /> : <ChevronRight />}</button></article>; })}</div>
+                <div className="weekly-line"><span><b>This week</b><small>{liveDays} of 5 study days complete</small></span><div><i style={{ width: `${weeklyPercent}%` }} /></div><b>{weeklyPercent}%</b></div>
               </section>
 
-              <section className="recent-card dashboard-card"><div className="card-heading"><h2>Recent activity</h2></div><div className="activity-list">{latest && <article><span className="activity-icon assessment"><BarChart3 /></span><div><b>Assessment result saved</b><small>Overall {latest.overallBand.toFixed(1)} · priority: {latest.prioritySkill}</small></div><time>{new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(latest.createdAt))}</time></article>}<article><span className="activity-icon reading"><BookOpen /></span><div><b>Matching headings practice</b><small>6 of 8 correct · Reading</small></div><time>Yesterday</time></article><article><span className="activity-icon speaking"><Mic2 /></span><div><b>Speaking warm-up completed</b><small>Fluency and topic vocabulary</small></div><time>16 Jul</time></article></div></section>
+              <section className="recent-card dashboard-card"><div className="card-heading"><h2>Recent activity</h2></div><div className="activity-list">{activityTasks.map((task) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id}><span className={`activity-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title} completed</b><small>{task.minutes} minutes · {task.skill} · +40 points</small></div><time>{task.completedAt ? new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(task.completedAt)) : "Today"}</time></article>; })}{latest && <article><span className="activity-icon assessment"><BarChart3 /></span><div><b>Assessment result saved</b><small>Overall {latest.overallBand.toFixed(1)} · priority: {latest.prioritySkill}</small></div><time>{new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(latest.createdAt))}</time></article>}</div></section>
+
+              <section className="weekend-mock-card dashboard-card"><div className="weekend-mock-copy"><span className="eyebrow light"><Trophy /> {weekend ? "This weekend" : "Weekend challenge"}</span><h2>Challenge yourself</h2><p>Take a complete four-skill practice mock every weekend and compare your estimate with the previous week.</p><div className="mock-card-stats">{latestMock ? <><span><small>Latest overall</small><b>{latestMock.overallBand.toFixed(1)}</b></span><span><small>Previous week</small><b>{previousMock?.overallBand.toFixed(1) ?? "—"}</b></span><span><small>Weekly change</small><b className={mockDelta !== null && mockDelta >= 0 ? "positive" : ""}>{mockDelta === null ? "First result" : `${mockDelta >= 0 ? "+" : ""}${mockDelta.toFixed(1)}`}</b></span></> : <><span><small>Skills</small><b>4 modules</b></span><span><small>Time</small><b>20–25 min</b></span><span><small>Goal</small><b>Beat last week</b></span></>}</div><Link className="button white" href="/mock-test">{mockDoneThisWeek ? "Review this week’s result" : weekend ? "Start weekend mock" : "Prepare for the weekend"}<ArrowRight /></Link></div><img src="/capi-challenge.png" alt="Capi Coach with a checklist and trophy" /></section>
             </div>
 
             <aside className="dashboard-secondary">
               <section className="calendar-card dashboard-card" id="study-calendar"><div className="card-heading"><div><span className="eyebrow">July 2026</span><h2>Your study week</h2></div><CalendarDays aria-hidden="true" /></div><div className="week-labels">{["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="week-days">{monthDays.map(({ day, state }) => <button key={day} aria-label={`Select July ${day}`} aria-pressed={selectedDay === day} onClick={() => setSelectedDay(day)} className={`${state} ${selectedDay === day ? "selected" : ""}`}>{day}{state === "done" && <Check />}</button>)}</div><div className="calendar-legend"><span><i className="done" /> Studied</span><span><i className="planned" /> Planned</span><span>Selected: {selectedDay} July</span></div></section>
 
-              <section className="challenge-card dashboard-card"><div><span className="eyebrow light"><Zap /> Capi challenge</span><h2>Three focused days</h2><p>Complete one planned lesson on three consecutive days.</p><div className="challenge-progress"><span className="done"><Check /></span><i /><span className="done"><Check /></span><i /><span>3</span></div><small>2 of 3 days complete</small></div><img src="/capi-challenge.png" alt="Capi Coach wearing a blue headband with a checklist and trophy" /></section>
+              <section className="challenge-card dashboard-card"><div><span className="eyebrow light"><Zap /> Capi challenge</span><h2>Three focused days</h2><p>Complete one planned lesson on three different days this week.</p><div className="challenge-progress">{[1,2,3].map((day) => <span key={day} className={liveDays >= day ? "done" : ""}>{liveDays >= day ? <Check /> : day}</span>)}</div><small>{Math.min(liveDays, 3)} of 3 days complete</small></div><img src="/capi-challenge.png" alt="Capi Coach wearing a blue headband with a checklist and trophy" /></section>
 
               <section className="capi-advice-card dashboard-card"><div className="advice-heading"><img src="/capi-advice.png" alt="Capi Coach with a magnifying glass and lightbulb" /><span><small>CAPI COACH</small><b>Today&apos;s advice</b></span></div><p>{latest ? <>Your <b>{latest.strengthSkill.toLowerCase()}</b> score gives you a strong base. For the next few sessions, slow down and check the structure of each <b>{latest.prioritySkill.toLowerCase()}</b> answer before adding detail.</> : <>Take the short assessment first. I&apos;ll use your four module estimates to choose the clearest place to begin.</>}</p><button onClick={() => setChatOpen(true)}>Ask Capi a question <ArrowRight /></button></section>
 

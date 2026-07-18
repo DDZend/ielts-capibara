@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireChatGPTUser } from "../chatgpt-auth";
-import { getLatestAssessmentForEmail } from "../../db";
+import { getDashboardLearningData, getLatestAssessmentForEmail } from "../../db";
 import { DashboardClient } from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -33,5 +33,22 @@ export default async function DashboardPage() {
     speakingConfidence: row.speakingConfidence,
     createdAt: row.createdAt,
   } : null;
-  return <DashboardClient userName={user.displayName} latest={latest} />;
+  const learning = await getDashboardLearningData(user.email, latest?.prioritySkill ?? "Reading");
+  const mocks = learning.mocks.map((mock) => ({
+    id: mock.id,
+    weekStart: mock.weekStart,
+    overallBand: mock.overallBand,
+    speakingBand: mock.speakingBand,
+    writingBand: mock.writingBand,
+    readingBand: mock.readingBand,
+    listeningBand: mock.listeningBand,
+    prioritySkill: mock.prioritySkill as "Speaking" | "Writing" | "Reading" | "Listening",
+    strengthSkill: mock.strengthSkill as "Speaking" | "Writing" | "Reading" | "Listening",
+    readingCorrect: mock.readingCorrect,
+    listeningCorrect: mock.listeningCorrect,
+    writingWords: mock.writingWords,
+    speakingConfidence: mock.speakingConfidence,
+    createdAt: mock.createdAt,
+  }));
+  return <DashboardClient userName={user.displayName} latest={latest} initialTasks={learning.tasks} recentTasks={learning.recent} initialStats={learning.stats} mocks={mocks} />;
 }
