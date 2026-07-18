@@ -68,7 +68,7 @@ export default async function Home() {
               <ChevronDown size={14} />
             </label>
             <Link className="button secondary small" href={user ? "/dashboard" : chatGPTSignInPath("/dashboard")}>
-              {user ? "Open dashboard" : "Sign in"}
+              {user ? "Go to my study plan" : "Sign in"}
             </Link>
             <details className="mobile-menu">
               <summary aria-label="Open menu"><Menu size={22} /></summary>
