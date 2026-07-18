@@ -100,3 +100,17 @@ test("challenge card uses Capi checklist artwork without a calendar icon", async
   assert.match(challenge, /capi-challenge\.png/);
   assert.doesNotMatch(challenge, /CalendarDays/);
 });
+
+test("dashboard topbar and skill modules expose compact interactive controls", async () => {
+  const [dashboard, styles] = await Promise.all([
+    read("app/dashboard/DashboardClient.tsx"),
+    read("app/globals.css"),
+  ]);
+  for (const label of ["Eng", "Рус", "Қаз"]) assert.match(dashboard, new RegExp(`>${label}<`));
+  assert.match(dashboard, /aria-controls="capi-coins-panel"/);
+  assert.match(dashboard, /aria-controls="profile-panel"/);
+  assert.match(dashboard, /className={`skill-card \${className}`} href="#today-plan"/);
+  assert.match(styles, /\.interactive-control:hover/);
+  assert.match(styles, /\.skill-card:hover/);
+  assert.match(styles, /\.skill-card:focus-visible/);
+});

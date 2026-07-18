@@ -71,6 +71,8 @@ const monthDays = [
 export function DashboardClient({ userName, latest, initialTasks, recentTasks, initialStats, mocks }: { userName: string; latest: SavedAssessment | null; initialTasks: DashboardTask[]; recentTasks: DashboardTask[]; initialStats: DashboardStats; mocks: SavedMock[] }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [coinsOpen, setCoinsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [targetOpen, setTargetOpen] = useState(false);
   const [targetBand, setTargetBand] = useState(latest?.targetBand ?? 7);
   const [targetState, setTargetState] = useState<"idle" | "saving" | "saved">("idle");
@@ -158,12 +160,17 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
           <button className="mobile-nav-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation"><Menu /></button>
           <Link className="mobile-dashboard-brand" href="/"><span className="brand-c">C</span><b>IELTS Mastery</b></Link>
           <div className="topbar-actions">
-            <span className="metric"><Star fill="currentColor" /><span><small>Capi-Coins</small><b>{livePoints.toLocaleString()}</b></span></span>
-            <span className="metric"><Flame fill="currentColor" /><span><small>Streak</small><b>{liveStreak} {liveStreak === 1 ? "day" : "days"}</b></span></span>
+            <div className="topbar-control-wrap coin-control">
+              <button className="metric metric-button interactive-control" aria-haspopup="dialog" aria-expanded={coinsOpen} aria-controls="capi-coins-panel" onClick={() => { setCoinsOpen((open) => !open); setProfileOpen(false); }}><Star fill="currentColor" /><span><small>Capi-Coins</small><b>{livePoints.toLocaleString()}</b></span></button>
+              {coinsOpen && <div className="topbar-popover coins-popover" id="capi-coins-panel" role="dialog" aria-label="Capi-Coins balance"><span className="popover-icon coins"><Star fill="currentColor" /></span><div><small>Your balance</small><h3>{livePoints.toLocaleString()} Capi-Coins</h3><p>Complete a lesson to earn 40 Capi-Coins and keep your weekly streak moving.</p><Link href="#today-plan" onClick={() => setCoinsOpen(false)}>View today&apos;s plan <ArrowRight /></Link></div></div>}
+            </div>
+            <span className="metric streak-metric"><Flame fill="currentColor" /><span><small>Streak</small><b>{liveStreak} {liveStreak === 1 ? "day" : "days"}</b></span></span>
             <button className="notification" aria-label="View 2 recent notifications" onClick={() => document.querySelector(".recent-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Bell /><i>2</i></button>
-            <label className="language-control dashboard-language"><Languages /><select aria-label="Language"><option>English (UK)</option><option>Русский</option><option>Қазақша</option></select><ChevronDown /></label>
-            <span className="profile-chip"><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>Target band {targetBand.toFixed(1)}</small></span></span>
-            <a className="signout" href="/signout-with-chatgpt?return_to=%2F" aria-label="Sign out"><LogOut /></a>
+            <label className="language-control dashboard-language" title="Language"><Languages /><select aria-label="Language" defaultValue="eng"><option value="eng">Eng</option><option value="rus">Рус</option><option value="kaz">Қаз</option></select><ChevronDown /></label>
+            <div className="topbar-control-wrap profile-control">
+              <button className="profile-chip interactive-control" aria-label={`Open profile menu for ${userName}`} aria-haspopup="dialog" aria-expanded={profileOpen} aria-controls="profile-panel" onClick={() => { setProfileOpen((open) => !open); setCoinsOpen(false); }}><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>Target band {targetBand.toFixed(1)}</small></span><ChevronDown className="profile-chevron" /></button>
+              {profileOpen && <div className="topbar-popover profile-popover" id="profile-panel" role="dialog" aria-label="Profile menu"><div className="profile-popover-head"><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>IELTS learner · Target {targetBand.toFixed(1)}</small></span></div><div className="profile-popover-actions"><Link href="/assessment"><BarChart3 /> Update assessment <ChevronRight /></Link><button onClick={() => { setProfileOpen(false); setTargetOpen(true); document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth" }); }}><Target /> Target settings <ChevronRight /></button><a href="/signout-with-chatgpt?return_to=%2F"><LogOut /> Sign out <ChevronRight /></a></div></div>}
+            </div>
           </div>
         </header>
 
@@ -178,7 +185,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
               <section className="progress-section dashboard-card" id="progress">
                 <div className="card-heading"><div><span className="eyebrow">Latest assessment</span><h2>Your overall progress</h2></div><Link href="/assessment">Reassess <ArrowRight /></Link></div>
                 {latest ? <div className="progress-summary"><div className="progress-ring" style={{ "--progress": `${progress * 3.6}deg` } as React.CSSProperties}><span><b>{score.toFixed(1)}</b><small>of {targetBand.toFixed(1)}</small></span></div><div><h3>{progress}% of the way to your target</h3><p>Your strongest area is <b>{latest.strengthSkill}</b>. Improving <b>{latest.prioritySkill}</b> will give your overall band the biggest lift.</p><div className="progress-line"><span style={{ width: `${progress}%` }} /></div><small>Assessment saved {new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(latest.createdAt))}</small></div></div> : <div className="empty-progress"><Target /><div><h3>No saved assessment yet</h3><p>Complete the diagnostic to see real module bands and a focused study plan.</p></div><Link className="button primary small" href="/assessment">Start now</Link></div>}
-                <div className="skill-grid" id="modules">{modules.map(({ skill, icon: Icon, className, tasks }) => <article className={`skill-card ${className}`} key={skill}><span><Icon /></span><div><small>{skill}</small><b>{bands[skill]?.toFixed(1) ?? "—"}</b></div><p>{latest ? tasks : "Complete assessment"}</p><ChevronRight /></article>)}</div>
+                <div className="skill-grid" id="modules">{modules.map(({ skill, icon: Icon, className, tasks }) => <Link className={`skill-card ${className}`} href="#today-plan" aria-label={`Practise ${skill}. ${bands[skill] ? `Current estimate ${bands[skill]?.toFixed(1)}` : "Complete the assessment first"}`} key={skill}><span className="skill-card-icon"><Icon /></span><div><small>{skill}</small><b>{bands[skill]?.toFixed(1) ?? "—"}</b></div><p>{latest ? tasks : "Complete assessment"}</p><ChevronRight className="skill-card-chevron" /></Link>)}</div>
               </section>
 
               <section id="today-plan" className="today-card dashboard-card">
