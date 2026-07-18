@@ -398,6 +398,7 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .week-days button.done { color: var(--green-dark); background: #e8f3e6; }
 .week-days button.today { color: white; background: var(--green); font-weight: 800; }
 .week-days button.planned { color: var(--reading); background: #f0edff; border: 1px solid #d9d0ff; }
+.week-days button.selected { box-shadow: 0 0 0 2px white, 0 0 0 4px var(--green); }
 .week-days button svg { position: absolute; width: 8px; bottom: 3px; }
 .calendar-legend { margin-top: 13px; display: flex; gap: 14px; color: var(--muted); font-size: 8px; }
 .calendar-legend span { display: flex; align-items: center; gap: 4px; }
@@ -444,7 +445,9 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .capi-chat header button { margin-left: auto; border: 0; background: transparent; color: white; }
 .capi-chat header button svg { width: 18px; }
 .chat-body { padding: 15px; background: #f7faf6; }
-.chat-body > p { margin: 0; border: 1px solid #e2e9e0; border-radius: 4px 12px 12px; background: white; padding: 12px; font-size: 11px; line-height: 1.55; }
+.chat-messages { max-height: 230px; overflow-y: auto; display: grid; gap: 8px; }
+.chat-messages p { margin: 0; border: 1px solid #e2e9e0; border-radius: 4px 12px 12px; background: white; padding: 10px 12px; font-size: 11px; line-height: 1.55; }
+.chat-messages p.student { justify-self: end; max-width: 88%; color: white; background: var(--green); border-color: var(--green); border-radius: 12px 4px 12px 12px; }
 .chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .chat-suggestions button { border: 1px solid #cfe0d0; border-radius: 99px; background: white; color: var(--green-dark); padding: 7px 9px; font-size: 9px; }
 .capi-chat form { padding: 10px; border-top: 1px solid var(--line); display: flex; gap: 7px; }
