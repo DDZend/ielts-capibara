@@ -14,10 +14,12 @@ import {
   ChevronRight,
   Clock3,
   Flame,
+  Gift,
   Headphones,
   HelpCircle,
   Languages,
   LayoutDashboard,
+  Lock,
   LogOut,
   Menu,
   MessageCircle,
@@ -68,6 +70,13 @@ const monthDays = [
   { day: 13, state: "done" }, { day: 14, state: "done" }, { day: 15, state: "done" }, { day: 16, state: "today" }, { day: 17, state: "planned" }, { day: 18, state: "" }, { day: 19, state: "" },
 ];
 
+const capiHelperThreshold = 200;
+const discountTiers = [
+  { percent: 5, coins: 500 },
+  { percent: 10, coins: 1000 },
+  { percent: 15, coins: 1500 },
+] as const;
+
 export function DashboardClient({ userName, latest, initialTasks, recentTasks, initialStats, mocks }: { userName: string; latest: SavedAssessment | null; initialTasks: DashboardTask[]; recentTasks: DashboardTask[]; initialStats: DashboardStats; mocks: SavedMock[] }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -94,6 +103,10 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
   const liveDays = Math.max(0, initialStats.completedDaysThisWeek + Number(hasCompletedToday && !hadCompletedToday) - Number(!hasCompletedToday && hadCompletedToday));
   const liveStreak = Math.max(0, initialStats.streak + Number(hasCompletedToday && !hadCompletedToday) - Number(!hasCompletedToday && hadCompletedToday));
   const livePoints = Math.max(0, initialStats.points + (completedToday - initialStats.completedTasksToday) * 40);
+  const helperUnlocked = livePoints >= capiHelperThreshold;
+  const unlockedDiscount = [...discountTiers].reverse().find((tier) => livePoints >= tier.coins)?.percent ?? 0;
+  const nextDiscount = discountTiers.find((tier) => livePoints < tier.coins);
+  const discountProgress = nextDiscount ? Math.min(100, Math.round(livePoints / nextDiscount.coins * 100)) : 100;
   const weeklyPercent = Math.min(100, Math.round(liveDays / 5 * 100));
   const activityTasks = [...tasks.filter((task) => task.completedAt), ...recentTasks.filter((task) => !tasks.some((today) => today.id === task.id))].slice(0, 5);
   const latestMock = mocks[0] ?? null;
@@ -163,7 +176,56 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
           <div className="topbar-actions">
             <div className="topbar-control-wrap coin-control">
               <button className="metric metric-button interactive-control" aria-haspopup="dialog" aria-expanded={coinsOpen} aria-controls="capi-coins-panel" onClick={() => { setCoinsOpen((open) => !open); setProfileOpen(false); }}><Star fill="currentColor" /><span><small>Capi-Coins</small><b>{livePoints.toLocaleString()}</b></span></button>
-              {coinsOpen && <div className="topbar-popover coins-popover" id="capi-coins-panel" role="dialog" aria-label="Capi-Coins balance"><span className="popover-icon coins"><Star fill="currentColor" /></span><div><small>Your balance</small><h3>{livePoints.toLocaleString()} Capi-Coins</h3><p>Complete a lesson to earn 40 Capi-Coins and keep your weekly streak moving.</p><Link href="#today-plan" onClick={() => setCoinsOpen(false)}>View today&apos;s plan <ArrowRight /></Link></div></div>}
+              {coinsOpen && (
+                <div className="topbar-popover coins-popover" id="capi-coins-panel" role="dialog" aria-label="Capi-Coins rewards centre">
+                  <div className="coins-popover-head">
+                    <span className="popover-icon coins"><Star fill="currentColor" /></span>
+                    <div><small>Your balance</small><h3>{livePoints.toLocaleString()} Capi-Coins</h3></div>
+                    <button type="button" aria-label="Close Capi-Coins rewards" onClick={() => setCoinsOpen(false)}><X /></button>
+                  </div>
+
+                  <section className={`capi-helper-reward ${helperUnlocked ? "unlocked" : "locked"}`}>
+                    <img src="/capi-advice.png" alt="Capi Helper ready to offer study advice" />
+                    <div>
+                      <span><Sparkles /> Capi Helper</span>
+                      <h4>Get a focused study hint</h4>
+                      <p>Ask Capi to explain a difficult task and suggest your next step.</p>
+                      <button type="button" disabled={!helperUnlocked} onClick={() => { setCoinsOpen(false); setChatOpen(true); }}>
+                        {helperUnlocked ? <>Open Capi Helper <ArrowRight /></> : <><Lock /> {(capiHelperThreshold - livePoints).toLocaleString()} coins to unlock</>}
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="coins-discounts">
+                    <div className="coins-discounts-head">
+                      <div><small>Learning discounts</small><h4>Save up to 15%</h4></div>
+                      <span>{unlockedDiscount ? `${unlockedDiscount}% unlocked` : "Keep earning"}</span>
+                    </div>
+                    <div className="discount-tier-grid">
+                      {discountTiers.map((tier) => {
+                        const unlocked = livePoints >= tier.coins;
+                        return (
+                          <article className={unlocked ? "unlocked" : ""} key={tier.percent}>
+                            <i>{unlocked ? <Check /> : <Lock />}</i>
+                            <b>{tier.percent}%</b>
+                            <small>{tier.coins.toLocaleString()} coins</small>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    <div className="discount-progress" aria-label={nextDiscount ? `${discountProgress}% progress toward the ${nextDiscount.percent}% discount` : "All discounts unlocked"}>
+                      <span><i style={{ width: `${discountProgress}%` }} /></span>
+                      <small>{nextDiscount ? `${(nextDiscount.coins - livePoints).toLocaleString()} more coins for ${nextDiscount.percent}% off` : "You unlocked the maximum 15% discount"}</small>
+                    </div>
+                    <p>Your highest unlocked discount can be used on an eligible IELTS Mastery offer.</p>
+                  </section>
+
+                  <div className="coins-popover-foot">
+                    <span><Gift /> Earn 40 coins for every completed lesson.</span>
+                    <Link href="#today-plan" onClick={() => setCoinsOpen(false)}>View plan <ArrowRight /></Link>
+                  </div>
+                </div>
+              )}
             </div>
             <span className="metric streak-metric"><Flame fill="currentColor" /><span><small>Streak</small><b>{liveStreak} {liveStreak === 1 ? "day" : "days"}</b></span></span>
             <button className="notification interactive-control" aria-label="View 2 recent notifications" onClick={() => document.querySelector(".recent-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Bell /><i>2</i></button>

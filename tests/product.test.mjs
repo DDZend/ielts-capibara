@@ -126,6 +126,20 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   assert.match(styles, /\.dashboard-language select \{ position: absolute; z-index: 2; inset: 0;/);
 });
 
+test("Capi-Coins opens a rewards centre with Capi Helper and discounts up to 15 percent", async () => {
+  const [dashboard, styles] = await Promise.all([
+    read("app/dashboard/DashboardClient.tsx"),
+    read("app/globals.css"),
+  ]);
+  assert.match(dashboard, /const capiHelperThreshold = 200/);
+  for (const tier of [5, 10, 15]) assert.match(dashboard, new RegExp(`percent: ${tier}`));
+  assert.match(dashboard, /Capi Helper/);
+  assert.match(dashboard, /Save up to 15%/);
+  assert.match(dashboard, /setChatOpen\(true\)/);
+  assert.match(styles, /\.capi-helper-reward/);
+  assert.match(styles, /\.discount-tier-grid article\.unlocked/);
+});
+
 test("notification and language controls share hover feedback and Reading uses yellow", async () => {
   const [dashboard, styles] = await Promise.all([
     read("app/dashboard/DashboardClient.tsx"),
