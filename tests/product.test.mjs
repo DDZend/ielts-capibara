@@ -21,6 +21,7 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/mock-results/route.ts", root)),
     access(new URL("app/api/speaking-feedback/route.ts", root)),
     access(new URL("app/api/writing-feedback/route.ts", root)),
+    access(new URL("app/api/capi-helper/route.ts", root)),
   ]);
 });
 
@@ -126,18 +127,30 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   assert.match(styles, /\.dashboard-language select \{ position: absolute; z-index: 2; inset: 0;/);
 });
 
-test("Capi-Coins opens a rewards centre with Capi Helper and discounts up to 15 percent", async () => {
-  const [dashboard, styles] = await Promise.all([
+test("Capi Helper turns donated coins into persistent one-day passes for new learners", async () => {
+  const [dashboard, styles, api, schema, migration] = await Promise.all([
     read("app/dashboard/DashboardClient.tsx"),
     read("app/globals.css"),
+    read("app/api/capi-helper/route.ts"),
+    read("db/schema.ts"),
+    read("drizzle/0002_loose_stardust.sql"),
   ]);
-  assert.match(dashboard, /const capiHelperThreshold = 200/);
+  assert.match(dashboard, /const capiHelperGiftCost = 500/);
   for (const tier of [5, 10, 15]) assert.match(dashboard, new RegExp(`percent: ${tier}`));
-  assert.match(dashboard, /Capi Helper/);
+  assert.match(dashboard, /Give a new student one free day/);
+  assert.match(dashboard, /24-hour IELTS Mastery pass/);
   assert.match(dashboard, /Save up to 15%/);
-  assert.match(dashboard, /setChatOpen\(true\)/);
+  assert.match(dashboard, /discountTiers.*liveEarnedPoints/s);
   assert.match(styles, /\.capi-helper-reward/);
+  assert.match(styles, /\.capi-helper-exchange/);
   assert.match(styles, /\.discount-tier-grid article\.unlocked/);
+  assert.match(api, /const user = await getChatGPTUser\(\)/);
+  assert.match(api, /const GIFT_COST = 500/);
+  assert.match(api, /const ACCESS_HOURS = 24/);
+  assert.match(api, /INSERT INTO capi_helper_gifts/);
+  assert.match(api, /WHERE \(/);
+  assert.doesNotMatch(api, /body\.donorEmail|body\.userEmail/);
+  for (const source of [schema, migration]) assert.match(source, /capi_helper_gifts/);
 });
 
 test("notification and language controls share hover feedback and Reading uses yellow", async () => {

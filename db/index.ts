@@ -90,6 +90,20 @@ export function ensureAppSchema() {
       getD1().prepare(
         "CREATE INDEX IF NOT EXISTS mock_results_user_created_at_idx ON mock_results (user_email, created_at)",
       ),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS capi_helper_gifts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        donor_email TEXT NOT NULL,
+        coins INTEGER NOT NULL,
+        access_hours INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare(
+        "CREATE INDEX IF NOT EXISTS capi_helper_gifts_donor_created_at_idx ON capi_helper_gifts (donor_email, created_at)",
+      ),
+      getD1().prepare(
+        "CREATE INDEX IF NOT EXISTS capi_helper_gifts_status_created_at_idx ON capi_helper_gifts (status, created_at)",
+      ),
     ])
     .then(() => undefined);
   return schemaReady;
@@ -137,7 +151,7 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
 
   const sixtyDaysAgo = new Date(now);
   sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
-  const [tasks, completed, recent, mocks] = await Promise.all([
+  const [tasks, completed, recent, mocks, earned, gifts] = await Promise.all([
     getDb().select().from(schema.studyTasks)
       .where(and(eq(schema.studyTasks.userEmail, email), eq(schema.studyTasks.taskDate, today)))
       .orderBy(schema.studyTasks.id),
@@ -151,6 +165,10 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
       .where(and(eq(schema.studyTasks.userEmail, email), isNotNull(schema.studyTasks.completedAt)))
       .orderBy(desc(schema.studyTasks.completedAt)).limit(6),
     getMockResultsForEmail(email, 2),
+    getDb().select({ id: schema.studyTasks.id }).from(schema.studyTasks)
+      .where(and(eq(schema.studyTasks.userEmail, email), isNotNull(schema.studyTasks.completedAt))),
+    getDb().select({ coins: schema.capiHelperGifts.coins }).from(schema.capiHelperGifts)
+      .where(eq(schema.capiHelperGifts.donorEmail, email)),
   ]);
 
   const completedDates = new Set(completed.map((row) => row.taskDate));
@@ -162,12 +180,16 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
     streak += 1;
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
+  const earnedPoints = earned.length * 40;
+  const giftedPoints = gifts.reduce((total, gift) => total + gift.coins, 0);
   return {
     tasks,
     recent,
     mocks,
     stats: {
-      points: completed.length * 40,
+      points: Math.max(0, earnedPoints - giftedPoints),
+      earnedPoints,
+      sponsoredPasses: gifts.length,
       streak,
       completedDaysThisWeek: thisWeekDates.size,
       completedTasksToday: tasks.filter((task) => task.completedAt).length,

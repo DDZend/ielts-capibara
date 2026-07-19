@@ -53,6 +53,8 @@ type DashboardTask = {
 
 type DashboardStats = {
   points: number;
+  earnedPoints: number;
+  sponsoredPasses: number;
   streak: number;
   completedDaysThisWeek: number;
   completedTasksToday: number;
@@ -70,7 +72,7 @@ const monthDays = [
   { day: 13, state: "done" }, { day: 14, state: "done" }, { day: 15, state: "done" }, { day: 16, state: "today" }, { day: 17, state: "planned" }, { day: 18, state: "" }, { day: 19, state: "" },
 ];
 
-const capiHelperThreshold = 200;
+const capiHelperGiftCost = 500;
 const discountTiers = [
   { percent: 5, coins: 500 },
   { percent: 10, coins: 1000 },
@@ -90,6 +92,9 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
   const [selectedDay, setSelectedDay] = useState(16);
   const [reserved, setReserved] = useState(false);
   const [chatInput, setChatInput] = useState("");
+  const [giftState, setGiftState] = useState<"idle" | "confirming" | "sending" | "sent" | "error">("idle");
+  const [giftError, setGiftError] = useState("");
+  const [sessionGifts, setSessionGifts] = useState(0);
   const [messages, setMessages] = useState<{ role: "capi" | "student"; text: string }[]>([
     { role: "capi", text: `Hi! I’m focusing your plan on ${latest?.prioritySkill.toLowerCase() ?? "finding your starting level"}. What would you like help with?` },
   ]);
@@ -102,11 +107,14 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
   const hasCompletedToday = completedToday > 0;
   const liveDays = Math.max(0, initialStats.completedDaysThisWeek + Number(hasCompletedToday && !hadCompletedToday) - Number(!hasCompletedToday && hadCompletedToday));
   const liveStreak = Math.max(0, initialStats.streak + Number(hasCompletedToday && !hadCompletedToday) - Number(!hasCompletedToday && hadCompletedToday));
-  const livePoints = Math.max(0, initialStats.points + (completedToday - initialStats.completedTasksToday) * 40);
-  const helperUnlocked = livePoints >= capiHelperThreshold;
-  const unlockedDiscount = [...discountTiers].reverse().find((tier) => livePoints >= tier.coins)?.percent ?? 0;
-  const nextDiscount = discountTiers.find((tier) => livePoints < tier.coins);
-  const discountProgress = nextDiscount ? Math.min(100, Math.round(livePoints / nextDiscount.coins * 100)) : 100;
+  const taskCoinChange = (completedToday - initialStats.completedTasksToday) * 40;
+  const liveEarnedPoints = Math.max(0, initialStats.earnedPoints + taskCoinChange);
+  const livePoints = Math.max(0, initialStats.points + taskCoinChange - sessionGifts * capiHelperGiftCost);
+  const canSponsorLearner = livePoints >= capiHelperGiftCost;
+  const sponsoredPasses = initialStats.sponsoredPasses + sessionGifts;
+  const unlockedDiscount = [...discountTiers].reverse().find((tier) => liveEarnedPoints >= tier.coins)?.percent ?? 0;
+  const nextDiscount = discountTiers.find((tier) => liveEarnedPoints < tier.coins);
+  const discountProgress = nextDiscount ? Math.min(100, Math.round(liveEarnedPoints / nextDiscount.coins * 100)) : 100;
   const weeklyPercent = Math.min(100, Math.round(liveDays / 5 * 100));
   const activityTasks = [...tasks.filter((task) => task.completedAt), ...recentTasks.filter((task) => !tasks.some((today) => today.id === task.id))].slice(0, 5);
   const latestMock = mocks[0] ?? null;
@@ -148,6 +156,20 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
     if (!response?.ok) setTasks((current) => current.map((item) => item.id === task.id ? task : item));
   };
 
+  const sponsorLearner = async () => {
+    setGiftState("sending");
+    setGiftError("");
+    const response = await fetch("/api/capi-helper", { method: "POST" }).catch(() => null);
+    const payload = response ? await response.json().catch(() => null) as { error?: string } | null : null;
+    if (!response?.ok) {
+      setGiftError(payload?.error ?? "The gift could not be completed. Please try again.");
+      setGiftState("error");
+      return;
+    }
+    setSessionGifts((current) => current + 1);
+    setGiftState("sent");
+  };
+
   return (
     <main className="dashboard-shell">
       <aside className={`dashboard-sidebar ${sidebarOpen ? "open" : ""}`}>
@@ -184,16 +206,37 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
                     <button type="button" aria-label="Close Capi-Coins rewards" onClick={() => setCoinsOpen(false)}><X /></button>
                   </div>
 
-                  <section className={`capi-helper-reward ${helperUnlocked ? "unlocked" : "locked"}`}>
-                    <img src="/capi-advice.png" alt="Capi Helper ready to offer study advice" />
-                    <div>
-                      <span><Sparkles /> Capi Helper</span>
-                      <h4>Get a focused study hint</h4>
-                      <p>Ask Capi to explain a difficult task and suggest your next step.</p>
-                      <button type="button" disabled={!helperUnlocked} onClick={() => { setCoinsOpen(false); setChatOpen(true); }}>
-                        {helperUnlocked ? <>Open Capi Helper <ArrowRight /></> : <><Lock /> {(capiHelperThreshold - livePoints).toLocaleString()} coins to unlock</>}
-                      </button>
+                  <section className="capi-helper-reward">
+                    <div className="capi-helper-intro">
+                      <img src="/capi-advice.png" alt="Capi helping a new IELTS learner" />
+                      <div>
+                        <span><Gift /> Capi Helper</span>
+                        <h4>Give a new student one free day</h4>
+                        <p>Donate Capi-Coins to place a 24-hour IELTS Mastery pass in the new-learner pool.</p>
+                      </div>
                     </div>
+                    <div className="capi-helper-exchange" aria-label="500 Capi-Coins gives one learner 24 hours of access">
+                      <span><Star fill="currentColor" /><b>500</b><small>Capi-Coins</small></span>
+                      <ArrowRight />
+                      <span><Clock3 /><b>24 hours</b><small>Free access</small></span>
+                    </div>
+
+                    {giftState === "confirming" ? (
+                      <div className="capi-helper-confirm">
+                        <p><b>Confirm your gift?</b> Your available balance will become {(livePoints - capiHelperGiftCost).toLocaleString()} Capi-Coins.</p>
+                        <div><button type="button" className="gift-cancel" onClick={() => setGiftState("idle")}>Not now</button><button type="button" onClick={() => void sponsorLearner()}>Give 500 coins <Gift /></button></div>
+                      </div>
+                    ) : giftState === "sent" ? (
+                      <div className="capi-helper-success"><Check /><span><b>Study day sponsored!</b><small>A 24-hour pass is ready for a new learner.</small></span><button type="button" onClick={() => setGiftState("idle")}>Done</button></div>
+                    ) : (
+                      <div className="capi-helper-action">
+                        <button type="button" disabled={!canSponsorLearner || giftState === "sending"} onClick={() => setGiftState("confirming")}>
+                          {giftState === "sending" ? "Sending your gift…" : canSponsorLearner ? <>Sponsor a learner <Gift /></> : <><Lock /> {(capiHelperGiftCost - livePoints).toLocaleString()} more coins needed</>}
+                        </button>
+                        {giftState === "error" && <p role="alert">{giftError}</p>}
+                      </div>
+                    )}
+                    <small className="capi-helper-impact"><Sparkles /> You&apos;ve sponsored {sponsoredPasses} {sponsoredPasses === 1 ? "study day" : "study days"} so far.</small>
                   </section>
 
                   <section className="coins-discounts">
@@ -203,7 +246,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
                     </div>
                     <div className="discount-tier-grid">
                       {discountTiers.map((tier) => {
-                        const unlocked = livePoints >= tier.coins;
+                        const unlocked = liveEarnedPoints >= tier.coins;
                         return (
                           <article className={unlocked ? "unlocked" : ""} key={tier.percent}>
                             <i>{unlocked ? <Check /> : <Lock />}</i>
@@ -215,9 +258,9 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
                     </div>
                     <div className="discount-progress" aria-label={nextDiscount ? `${discountProgress}% progress toward the ${nextDiscount.percent}% discount` : "All discounts unlocked"}>
                       <span><i style={{ width: `${discountProgress}%` }} /></span>
-                      <small>{nextDiscount ? `${(nextDiscount.coins - livePoints).toLocaleString()} more coins for ${nextDiscount.percent}% off` : "You unlocked the maximum 15% discount"}</small>
+                      <small>{nextDiscount ? `${(nextDiscount.coins - liveEarnedPoints).toLocaleString()} more earned coins for ${nextDiscount.percent}% off` : "You unlocked the maximum 15% discount"}</small>
                     </div>
-                    <p>Your highest unlocked discount can be used on an eligible IELTS Mastery offer.</p>
+                    <p>Discounts use lifetime-earned coins, so helping another student never removes your progress.</p>
                   </section>
 
                   <div className="coins-popover-foot">

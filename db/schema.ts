@@ -81,3 +81,21 @@ export const mockResults = sqliteTable(
 
 export type StudyTask = typeof studyTasks.$inferSelect;
 export type MockResult = typeof mockResults.$inferSelect;
+
+export const capiHelperGifts = sqliteTable(
+  "capi_helper_gifts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    donorEmail: text("donor_email").notNull(),
+    coins: integer("coins").notNull(),
+    accessHours: integer("access_hours").notNull(),
+    status: text("status").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("capi_helper_gifts_donor_created_at_idx").on(table.donorEmail, table.createdAt),
+    index("capi_helper_gifts_status_created_at_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export type CapiHelperGift = typeof capiHelperGifts.$inferSelect;

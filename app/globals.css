@@ -340,18 +340,39 @@ footer { border-top: 1px solid var(--line); background: white; padding-block: 55
 .coins-popover-head > button { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; color: #718077; background: transparent; cursor: pointer; display: grid; place-items: center; }
 .coins-popover-head > button:hover { color: var(--green-dark); background: #f0f6ef; }
 .coins-popover-head > button svg { width: 16px; }
-.capi-helper-reward { margin: 14px; min-height: 132px; padding: 13px 13px 12px 112px; position: relative; overflow: hidden; border: 1px solid #d9ead9; border-radius: 14px; background: linear-gradient(135deg, #f2f9ef, #fbfdf8); }
-.capi-helper-reward > img { width: 105px; height: 120px; position: absolute; left: 0; bottom: -8px; object-fit: contain; object-position: bottom center; }
-.capi-helper-reward > div { position: relative; z-index: 1; }
-.capi-helper-reward > div > span { color: var(--green); font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .75px; display: inline-flex; align-items: center; gap: 4px; }
-.capi-helper-reward > div > span svg { width: 12px; }
+.capi-helper-reward { margin: 14px; padding: 13px; border: 1px solid #cfe3d2; border-radius: 14px; background: linear-gradient(135deg, #eef8ef, #fbfdf8); }
+.capi-helper-intro { min-height: 82px; display: grid; grid-template-columns: 82px 1fr; align-items: center; gap: 10px; }
+.capi-helper-intro > img { width: 82px; height: 82px; object-fit: contain; object-position: bottom center; filter: drop-shadow(0 6px 8px #244d2a17); }
+.capi-helper-intro > div > span { color: var(--green); font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .75px; display: inline-flex; align-items: center; gap: 4px; }
+.capi-helper-intro > div > span svg { width: 12px; }
 .capi-helper-reward h4 { margin: 5px 0 4px; color: var(--green-dark); font-size: 14px; }
-.capi-helper-reward p { margin-bottom: 9px; }
-.capi-helper-reward button { min-height: 31px; padding: 0 10px; border: 0; border-radius: 8px; color: white; background: var(--green); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.capi-helper-reward p { margin: 0; }
+.capi-helper-exchange { min-height: 48px; margin: 10px 0; padding: 7px 9px; border: 1px dashed #a9c9ad; border-radius: 10px; background: #ffffffb8; display: grid; grid-template-columns: 1fr 22px 1fr; align-items: center; gap: 5px; }
+.capi-helper-exchange > svg { width: 16px; color: #7d9981; }
+.capi-helper-exchange > span { display: grid; grid-template-columns: 22px 1fr; align-items: center; column-gap: 5px; }
+.capi-helper-exchange > span > svg { grid-row: 1 / 3; width: 18px; color: #dd9600; }
+.capi-helper-exchange > span:last-child > svg { color: var(--green); }
+.capi-helper-exchange b { color: #314c36; font-size: 11px; }
+.capi-helper-exchange small { color: #768178; font-size: 7px; text-transform: uppercase; letter-spacing: .45px; }
+.capi-helper-reward button { min-height: 34px; padding: 0 11px; border: 0; border-radius: 8px; color: white; background: var(--green); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
 .capi-helper-reward button:hover:not(:disabled) { background: var(--green-dark); transform: translateY(-1px); }
 .capi-helper-reward button:disabled { color: #708077; background: #dfe7df; cursor: not-allowed; }
 .capi-helper-reward button svg { width: 13px; }
-.capi-helper-reward.locked > img { filter: saturate(.75); opacity: .78; }
+.capi-helper-action > button { width: 100%; }
+.capi-helper-action > p { margin-top: 6px; color: #a14335; font-size: 9px; line-height: 1.4; }
+.capi-helper-confirm { padding: 10px; border: 1px solid #bdd7c1; border-radius: 10px; background: white; }
+.capi-helper-confirm > p { color: #56645a; font-size: 9px; line-height: 1.45; }
+.capi-helper-confirm > div { margin-top: 8px; display: grid; grid-template-columns: 80px 1fr; gap: 6px; }
+.capi-helper-confirm button.gift-cancel { color: #607067; background: #edf2ed; }
+.capi-helper-confirm button.gift-cancel:hover { color: #314c36; background: #e2ebe2; }
+.capi-helper-success { min-height: 46px; padding: 8px 9px; border: 1px solid #9ac6a1; border-radius: 10px; background: white; display: grid; grid-template-columns: 25px 1fr auto; align-items: center; gap: 7px; }
+.capi-helper-success > svg { width: 24px; height: 24px; padding: 5px; border-radius: 50%; color: white; background: var(--green); }
+.capi-helper-success > span { display: flex; flex-direction: column; gap: 2px; }
+.capi-helper-success b { color: var(--green-dark); font-size: 10px; }
+.capi-helper-success small { color: #6e796f; font-size: 8px; letter-spacing: 0; text-transform: none; }
+.capi-helper-success button { min-height: 28px; color: var(--green); background: #eaf4e9; }
+.capi-helper-impact { margin-top: 9px; color: #5f7562; font-size: 8px; letter-spacing: 0; text-transform: none; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.capi-helper-impact svg { width: 11px; color: var(--green); }
 .coins-discounts { margin: 0 14px 14px; padding: 13px; border: 1px solid #eee1bb; border-radius: 14px; background: #fffdf7; }
 .coins-discounts-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .coins-discounts-head h4 { margin: 3px 0 0; color: #5b4105; font-size: 14px; }
