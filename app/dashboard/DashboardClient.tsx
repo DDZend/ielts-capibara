@@ -73,6 +73,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
   const [chatOpen, setChatOpen] = useState(false);
   const [coinsOpen, setCoinsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [language, setLanguage] = useState<"eng" | "rus" | "kaz">("eng");
   const [targetOpen, setTargetOpen] = useState(false);
   const [targetBand, setTargetBand] = useState(latest?.targetBand ?? 7);
   const [targetState, setTargetState] = useState<"idle" | "saving" | "saved">("idle");
@@ -166,7 +167,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
             </div>
             <span className="metric streak-metric"><Flame fill="currentColor" /><span><small>Streak</small><b>{liveStreak} {liveStreak === 1 ? "day" : "days"}</b></span></span>
             <button className="notification interactive-control" aria-label="View 2 recent notifications" onClick={() => document.querySelector(".recent-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Bell /><i>2</i></button>
-            <label className="language-control dashboard-language interactive-control" title="Language"><Languages /><select aria-label="Language" defaultValue="eng"><option value="eng">Eng</option><option value="rus">Рус</option><option value="kaz">Қаз</option></select><ChevronDown /></label>
+            <label className="language-control dashboard-language interactive-control" title="Language"><Languages /><span>{language === "eng" ? "Eng" : language === "rus" ? "Рус" : "Қаз"}</span><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value as "eng" | "rus" | "kaz")}><option value="eng">Eng</option><option value="rus">Рус</option><option value="kaz">Қаз</option></select><ChevronDown /></label>
             <div className="topbar-control-wrap profile-control">
               <button className="profile-chip interactive-control" aria-label={`Open profile menu for ${userName}`} aria-haspopup="dialog" aria-expanded={profileOpen} aria-controls="profile-panel" onClick={() => { setProfileOpen((open) => !open); setCoinsOpen(false); }}><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>Target band {targetBand.toFixed(1)}</small></span><ChevronDown className="profile-chevron" /></button>
               {profileOpen && <div className="topbar-popover profile-popover" id="profile-panel" role="dialog" aria-label="Profile menu"><div className="profile-popover-head"><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>IELTS learner · Target {targetBand.toFixed(1)}</small></span></div><div className="profile-popover-actions"><Link href="/assessment"><BarChart3 /> Update assessment <ChevronRight /></Link><button onClick={() => { setProfileOpen(false); setTargetOpen(true); document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth" }); }}><Target /> Target settings <ChevronRight /></button><a href="/signout-with-chatgpt?return_to=%2F"><LogOut /> Sign out <ChevronRight /></a></div></div>}
@@ -175,7 +176,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
         </header>
 
         <div className="dashboard-content" id="dashboard-top">
-          <section className="welcome-card dashboard-card">
+          <section className={`welcome-card dashboard-card ${targetOpen ? "target-open" : ""}`}>
             <div className="welcome-copy"><span className="eyebrow"><Sparkles /> Your personal study space</span><h1>Good to see you, {firstName}.</h1><p>{latest ? <>You&apos;re building toward Band {targetBand.toFixed(1)}. Today&apos;s plan gives extra attention to <b>{latest.prioritySkill.toLowerCase()}</b>.</> : <>Start with the free assessment and Capi will build your personal route to Band {targetBand.toFixed(1)}.</>}</p><div className="welcome-actions"><Link className="button primary" href={latest ? "#today-plan" : "/assessment"}>{latest ? "Continue today’s plan" : "Take the assessment"}<ArrowRight /></Link><button className="button soft" onClick={() => setTargetOpen((open) => !open)}><Target /> Target {targetBand.toFixed(1)}<ChevronDown /></button>{targetState === "saved" && <span className="saved-hint"><Check /> Saved</span>}</div>{targetOpen && <div className="target-picker" aria-label="Choose target band">{[6, 6.5, 7, 7.5, 8, 8.5, 9].map((band) => <button key={band} onClick={() => void updateTarget(band)} className={band === targetBand ? "selected" : ""}>{band.toFixed(1)}</button>)}</div>}</div>
             <img src="/capi-welcome.png" alt="Capi Coach pointing upward and holding a small rocket" />
           </section>

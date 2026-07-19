@@ -120,6 +120,10 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   assert.match(styles, /\.interactive-control:hover/);
   assert.match(styles, /\.skill-card:hover/);
   assert.match(styles, /\.skill-card:focus-visible/);
+  assert.match(dashboard, /targetOpen \? "target-open"/);
+  assert.match(styles, /\.welcome-card\.target-open \{ min-height: 306px; \}/);
+  assert.match(dashboard, /onChange=\{\(event\) => setLanguage/);
+  assert.match(styles, /\.dashboard-language select \{ position: absolute; z-index: 2; inset: 0;/);
 });
 
 test("notification and language controls share hover feedback and Reading uses yellow", async () => {
