@@ -14,6 +14,7 @@ test("all requested routes are present", async () => {
     access(new URL("app/speaking/page.tsx", root)),
     access(new URL("app/writing/page.tsx", root)),
     access(new URL("app/reading/page.tsx", root)),
+    access(new URL("app/listening/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
@@ -217,4 +218,29 @@ test("reading practice credits authentic sources and stays temporary", async () 
   assert.match(client, /Original adaptation, authentic source/);
   assert.match(client, /It is not an official IELTS passage/);
   assert.doesNotMatch(client, /localStorage|sessionStorage/);
+});
+
+test("listening course is protected and exposes twelve lessons across four parts", async () => {
+  const [page, client, dashboard] = await Promise.all([
+    read("app/listening/page.tsx"),
+    read("app/listening/ListeningClient.tsx"),
+    read("app/dashboard/DashboardClient.tsx"),
+  ]);
+  assert.match(page, /requireChatGPTUser\("\/listening"\)/);
+  assert.match(dashboard, /"\/listening"/);
+  assert.match(dashboard, /12 audio lessons/);
+  const lessonIds = ["form-completion", "spelling-numbers", "conversation-multiple-choice", "map-labelling", "matching-features", "short-answer", "matching-speakers", "attitude-multiple-choice", "sentence-completion", "lecture-notes", "table-flowchart", "summary-completion"];
+  for (const id of lessonIds) assert.match(client, new RegExp(`id: "${id}"`));
+  for (const part of ["part1", "part2", "part3", "part4"]) assert.match(client, new RegExp(`id: "${part}"`));
+});
+
+test("listening practice is transparent, interactive and temporary", async () => {
+  const client = await read("app/listening/ListeningClient.tsx");
+  assert.match(client, /temporary device-voice demo/);
+  assert.match(client, /window\.speechSynthesis/);
+  assert.match(client, /ONE PLAY ONLY/);
+  assert.match(client, /Reveal transcript and replay evidence/);
+  assert.match(client, /Facts adapted from/);
+  assert.doesNotMatch(client, /localStorage|sessionStorage/);
+  assert.doesNotMatch(client, /ielts\.org\/.*\.(mp3|wav)/i);
 });
