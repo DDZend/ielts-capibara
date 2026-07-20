@@ -16,6 +16,7 @@ import {
   ChevronRight,
   CircleAlert,
   CloudUpload,
+  CreditCard,
   Eye,
   EyeOff,
   FileAudio,
@@ -190,7 +191,7 @@ export function CreatorStudioClient({ userName, initialLessons }: { userName: st
 
       <section className="creator-hero">
         <div><span className="creator-kicker"><CloudUpload /> CREATOR STUDIO</span><h1>Publish the course without touching code.</h1><p>Upload your original media, add learning materials, control lesson order and decide exactly what students can see.</p></div>
-        <aside><strong>{publishedCount}<small>published lessons</small></strong><strong>{lessons.length - publishedCount}<small>private or hidden</small></strong><Link href={modulePaths[activeModule]} target="_blank"><Eye /> Preview {activeModule}</Link></aside>
+        <aside><strong>{publishedCount}<small>published lessons</small></strong><strong>{lessons.length - publishedCount}<small>private or hidden</small></strong><Link href={modulePaths[activeModule]} target="_blank"><Eye /> Preview {activeModule}</Link><Link href="/creator/memberships"><CreditCard /> Memberships</Link></aside>
       </section>
 
       <section className="creator-workspace">

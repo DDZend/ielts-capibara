@@ -159,7 +159,11 @@ export const subscriptions = sqliteTable(
     planInterval: text("plan_interval").notNull(),
     status: text("status").notNull(),
     discountPercent: integer("discount_percent").notNull().default(0),
+    promotionCode: text("promotion_code"),
+    currentPeriodStart: text("current_period_start"),
     currentPeriodEnd: text("current_period_end"),
+    graceUntil: text("grace_until"),
+    lastPaymentError: text("last_payment_error"),
     cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
@@ -177,12 +181,21 @@ export const paymentHistory = sqliteTable(
     userEmail: text("user_email").notNull(),
     stripeEventId: text("stripe_event_id").notNull(),
     stripeInvoiceId: text("stripe_invoice_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeChargeId: text("stripe_charge_id"),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     amountPaid: integer("amount_paid").notNull(),
+    refundedAmount: integer("refunded_amount").notNull().default(0),
     currency: text("currency").notNull(),
     status: text("status").notNull(),
     planInterval: text("plan_interval").notNull(),
     discountPercent: integer("discount_percent").notNull().default(0),
+    promotionCode: text("promotion_code"),
+    receiptUrl: text("receipt_url"),
+    invoicePdfUrl: text("invoice_pdf_url"),
+    failureReason: text("failure_reason"),
     paidAt: text("paid_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
   },
   (table) => [
     uniqueIndex("payment_history_stripe_event_uidx").on(table.stripeEventId),
@@ -237,6 +250,78 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type PaymentHistory = typeof paymentHistory.$inferSelect;
 export type SponsoredAccessPass = typeof sponsoredAccessPasses.$inferSelect;
 export type PaidAccessPass = typeof paidAccessPasses.$inferSelect;
+
+export const manualAccessGrants = sqliteTable(
+  "manual_access_grants",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    planInterval: text("plan_interval").notNull(),
+    status: text("status").notNull(),
+    startsAt: text("starts_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    note: text("note"),
+    grantedBy: text("granted_by").notNull(),
+    revokedAt: text("revoked_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("manual_access_grants_user_expires_at_idx").on(table.userEmail, table.expiresAt),
+  ],
+);
+
+export const promotionCodes = sqliteTable(
+  "promotion_codes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    code: text("code").notNull(),
+    percentOff: integer("percent_off").notNull(),
+    maxRedemptions: integer("max_redemptions"),
+    redemptionCount: integer("redemption_count").notNull().default(0),
+    reservedCount: integer("reserved_count").notNull().default(0),
+    expiresAt: text("expires_at"),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("promotion_codes_code_uidx").on(table.code)],
+);
+
+export const promotionRedemptions = sqliteTable(
+  "promotion_redemptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    promotionCodeId: integer("promotion_code_id").notNull(),
+    userEmail: text("user_email").notNull(),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull(),
+    status: text("status").notNull(),
+    createdAt: text("created_at").notNull(),
+    redeemedAt: text("redeemed_at"),
+  },
+  (table) => [
+    uniqueIndex("promotion_redemptions_session_uidx").on(table.stripeCheckoutSessionId),
+    uniqueIndex("promotion_redemptions_code_user_uidx").on(table.promotionCodeId, table.userEmail),
+  ],
+);
+
+export const billingNotifications = sqliteTable(
+  "billing_notifications",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    stripeEventId: text("stripe_event_id"),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    actionUrl: text("action_url"),
+    status: text("status").notNull().default("unread"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("billing_notifications_event_uidx").on(table.stripeEventId),
+    index("billing_notifications_user_created_at_idx").on(table.userEmail, table.createdAt),
+  ],
+);
 
 export const mediaAssets = sqliteTable(
   "media_assets",

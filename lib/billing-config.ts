@@ -100,6 +100,16 @@ export function discountedAmount(amount: number, percent: number) {
   return Math.max(0, Math.round(amount * (100 - percent) / 100));
 }
 
+export function billingTierRank(planId: string) {
+  if (!(planId in BILLING_PLANS)) return -1;
+  const tier = BILLING_PLANS[planId as BillingPlanId].tier;
+  return tier === "starter" ? 0 : tier === "silver" ? 1 : tier === "gold" ? 2 : 3;
+}
+
+export function isMembershipUpgrade(currentPlanId: string, nextPlanId: BillingPlanId) {
+  return BILLING_PLANS[nextPlanId].kind === "subscription" && billingTierRank(nextPlanId) > billingTierRank(currentPlanId);
+}
+
 export function billingPlanLabel(planId: string) {
   if (planId in BILLING_PLANS) return BILLING_PLANS[planId as BillingPlanId].label;
   if (planId === "monthly") return "Monthly";

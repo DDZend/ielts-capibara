@@ -428,3 +428,43 @@ test("commercial access uses server-calculated discounts and signed payment even
   assert.match(billing, /BILLING_PACKAGES\.map/);
   assert.match(billing, /Checkout coming soon/);
 });
+
+test("membership lifecycle supports upgrades, promotions, expiry, recovery, receipts and teacher controls", async () => {
+  const [checkout, webhook, promo, adminApi, adminPage, billingDb, database, schema, migration, studentBilling] = await Promise.all([
+    read("app/api/billing/checkout/route.ts"),
+    read("app/api/billing/webhook/route.ts"),
+    read("app/api/billing/promo/route.ts"),
+    read("app/api/creator/memberships/route.ts"),
+    read("app/creator/memberships/MembershipAdminClient.tsx"),
+    read("db/billing.ts"),
+    read("db/index.ts"),
+    read("db/schema.ts"),
+    read("drizzle/0007_sweet_richard_fisk.sql"),
+    read("app/billing/BillingClient.tsx"),
+  ]);
+  assert.match(checkout, /isMembershipUpgrade/);
+  assert.match(checkout, /proration_behavior: "always_invoice"/);
+  assert.match(checkout, /payment_behavior: "pending_if_incomplete"/);
+  assert.match(checkout, /findValidPromotion/);
+  assert.match(checkout, /reservePromotion/);
+  assert.match(promo, /getChatGPTUser/);
+  for (const event of ["invoice.payment_failed", "invoice.upcoming", "invoice.payment_action_required", "charge.refunded"]) assert.match(webhook, new RegExp(event.replace(".", "\\.")));
+  assert.match(webhook, /graceUntil/);
+  assert.match(webhook, /receipt_url/);
+  assert.match(webhook, /refunded_amount/);
+  assert.match(adminApi, /getApiCreatorUser/);
+  for (const action of ["manual_grant", "revoke_grant", "create_promo", "toggle_promo", "cancel_membership", "refund_payment"]) assert.match(adminApi, new RegExp(action));
+  assert.match(adminApi, /stripe\.refunds\.create/);
+  assert.match(adminApi, /stripe\.subscriptions\.cancel/);
+  for (const table of ["manual_access_grants", "promotion_codes", "promotion_redemptions", "billing_notifications"]) {
+    for (const source of [schema, migration, database]) assert.match(source, new RegExp(table));
+  }
+  assert.match(database, /status = 'past_due' AND grace_until > \?/);
+  assert.match(database, /manual_access_grants WHERE user_email = \?/);
+  assert.match(billingDb, /reserved_count/);
+  assert.match(adminPage, /Membership status/);
+  assert.match(adminPage, /Complete payment history/);
+  assert.match(studentBilling, /Have a promotion code/);
+  assert.match(studentBilling, /View receipt/);
+  assert.match(studentBilling, /Upgrade to/);
+});

@@ -155,7 +155,11 @@ export function ensureAppSchema() {
         plan_interval TEXT NOT NULL,
         status TEXT NOT NULL,
         discount_percent INTEGER NOT NULL DEFAULT 0,
+        promotion_code TEXT,
+        current_period_start TEXT,
         current_period_end TEXT,
+        grace_until TEXT,
+        last_payment_error TEXT,
         cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -167,12 +171,21 @@ export function ensureAppSchema() {
         user_email TEXT NOT NULL,
         stripe_event_id TEXT NOT NULL,
         stripe_invoice_id TEXT,
+        stripe_payment_intent_id TEXT,
+        stripe_charge_id TEXT,
+        stripe_checkout_session_id TEXT,
         amount_paid INTEGER NOT NULL,
+        refunded_amount INTEGER NOT NULL DEFAULT 0,
         currency TEXT NOT NULL,
         status TEXT NOT NULL,
         plan_interval TEXT NOT NULL,
         discount_percent INTEGER NOT NULL DEFAULT 0,
-        paid_at TEXT NOT NULL
+        promotion_code TEXT,
+        receipt_url TEXT,
+        invoice_pdf_url TEXT,
+        failure_reason TEXT,
+        paid_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       )`),
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS payment_history_stripe_event_uidx ON payment_history (stripe_event_id)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS payment_history_user_paid_at_idx ON payment_history (user_email, paid_at)"),
@@ -207,6 +220,56 @@ export function ensureAppSchema() {
       )`),
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS paid_access_passes_checkout_session_uidx ON paid_access_passes (stripe_checkout_session_id)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS paid_access_passes_user_expires_at_idx ON paid_access_passes (user_email, expires_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS manual_access_grants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        plan_interval TEXT NOT NULL,
+        status TEXT NOT NULL,
+        starts_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        note TEXT,
+        granted_by TEXT NOT NULL,
+        revoked_at TEXT,
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS manual_access_grants_user_expires_at_idx ON manual_access_grants (user_email, expires_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS promotion_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL,
+        percent_off INTEGER NOT NULL,
+        max_redemptions INTEGER,
+        redemption_count INTEGER NOT NULL DEFAULT 0,
+        reserved_count INTEGER NOT NULL DEFAULT 0,
+        expires_at TEXT,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS promotion_codes_code_uidx ON promotion_codes (code)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS promotion_redemptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        promotion_code_id INTEGER NOT NULL,
+        user_email TEXT NOT NULL,
+        stripe_checkout_session_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        redeemed_at TEXT
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS promotion_redemptions_session_uidx ON promotion_redemptions (stripe_checkout_session_id)"),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS promotion_redemptions_code_user_uidx ON promotion_redemptions (promotion_code_id, user_email)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS billing_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        stripe_event_id TEXT,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        action_url TEXT,
+        status TEXT NOT NULL DEFAULT 'unread',
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS billing_notifications_event_uidx ON billing_notifications (stripe_event_id)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS billing_notifications_user_created_at_idx ON billing_notifications (user_email, created_at)"),
       getD1().prepare(`CREATE TABLE IF NOT EXISTS media_assets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         owner_email TEXT NOT NULL,
@@ -239,6 +302,25 @@ export function ensureAppSchema() {
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS creator_lessons_module_lesson_uidx ON creator_lessons (module, lesson_id)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS creator_lessons_module_position_idx ON creator_lessons (module, position)"),
     ])
+    .then(async () => {
+      const additions: Record<string, Array<[string, string]>> = {
+        subscriptions: [
+          ["promotion_code", "TEXT"], ["current_period_start", "TEXT"], ["grace_until", "TEXT"], ["last_payment_error", "TEXT"],
+        ],
+        payment_history: [
+          ["stripe_payment_intent_id", "TEXT"], ["stripe_charge_id", "TEXT"], ["stripe_checkout_session_id", "TEXT"],
+          ["refunded_amount", "INTEGER NOT NULL DEFAULT 0"], ["promotion_code", "TEXT"], ["receipt_url", "TEXT"],
+          ["invoice_pdf_url", "TEXT"], ["failure_reason", "TEXT"], ["updated_at", "TEXT NOT NULL DEFAULT ''"],
+        ],
+      };
+      for (const [table, columns] of Object.entries(additions)) {
+        const info = await getD1().prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+        const existing = new Set((info.results ?? []).map((column) => column.name));
+        for (const [name, definition] of columns) {
+          if (!existing.has(name)) await getD1().prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`).run();
+        }
+      }
+    })
     .then(() => undefined);
   return schemaReady;
 }
@@ -457,10 +539,15 @@ export type BillingSummary = {
     planInterval: string;
     status: string;
     discountPercent: number;
+    promotionCode: string | null;
+    currentPeriodStart: string | null;
     currentPeriodEnd: string | null;
+    graceUntil: string | null;
+    lastPaymentError: string | null;
     cancelAtPeriodEnd: boolean;
     hasCustomer: boolean;
   } | null;
+  manualGrant: { id: number; planInterval: string; expiresAt: string; note: string | null } | null;
   activePass: { expiresAt: string; accessHours: number } | null;
   starterPass: { expiresAt: string; accessDays: number } | null;
   starterCredit: { passId: number; amount: number } | null;
@@ -483,15 +570,25 @@ export type BillingSummary = {
     status: string;
     planInterval: string;
     discountPercent: number;
+    promotionCode: string | null;
+    refundedAmount: number;
+    receiptUrl: string | null;
+    invoicePdfUrl: string | null;
+    failureReason: string | null;
     paidAt: string;
   }>;
+  notifications: Array<{ id: number; kind: string; title: string; message: string; actionUrl: string | null; createdAt: string }>;
 };
 
 type SubscriptionRow = {
   plan_interval: string;
   status: string;
   discount_percent: number;
+  promotion_code: string | null;
+  current_period_start: string | null;
   current_period_end: string | null;
+  grace_until: string | null;
+  last_payment_error: string | null;
   cancel_at_period_end: number;
   stripe_customer_id: string | null;
 };
@@ -515,6 +612,11 @@ type PaymentRow = {
   status: string;
   plan_interval: string;
   discount_percent: number;
+  promotion_code: string | null;
+  refunded_amount: number;
+  receipt_url: string | null;
+  invoice_pdf_url: string | null;
+  failure_reason: string | null;
   paid_at: string;
 };
 
@@ -527,14 +629,16 @@ export async function getBillingSummary(email: string): Promise<BillingSummary> 
     WHERE recipient_email = ? AND status = 'claimed' AND expires_at IS NOT NULL AND expires_at <= ?
   `).bind(email, now).run();
 
-  const [subscription, activePass, starterPass, starterCredit, starterPurchase, sponsoredResult, paymentsResult, coinResult] = await Promise.all([
-    getD1().prepare(`SELECT plan_interval, status, discount_percent, current_period_end, cancel_at_period_end, stripe_customer_id FROM subscriptions WHERE user_email = ? LIMIT 1`).bind(email).first<SubscriptionRow>(),
+  const [subscription, manualGrant, activePass, starterPass, starterCredit, starterPurchase, sponsoredResult, paymentsResult, notificationsResult, coinResult] = await Promise.all([
+    getD1().prepare(`SELECT plan_interval, status, discount_percent, promotion_code, current_period_start, current_period_end, grace_until, last_payment_error, cancel_at_period_end, stripe_customer_id FROM subscriptions WHERE user_email = ? LIMIT 1`).bind(email).first<SubscriptionRow>(),
+    getD1().prepare(`SELECT id, plan_interval, expires_at, note FROM manual_access_grants WHERE user_email = ? AND status = 'active' AND starts_at <= ? AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`).bind(email, now, now).first<{ id: number; plan_interval: string; expires_at: string; note: string | null }>(),
     getD1().prepare(`SELECT access_hours, expires_at FROM sponsored_access_passes WHERE recipient_email = ? AND status = 'claimed' AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`).bind(email, now).first<{ access_hours: number; expires_at: string }>(),
     getD1().prepare(`SELECT expires_at FROM paid_access_passes WHERE user_email = ? AND status = 'active' AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`).bind(email, now).first<{ expires_at: string }>(),
     getD1().prepare(`SELECT id, credit_amount FROM paid_access_passes WHERE user_email = ? AND credit_used_at IS NULL AND credit_reserved_session_id IS NULL ORDER BY created_at DESC LIMIT 1`).bind(email).first<{ id: number; credit_amount: number }>(),
     getD1().prepare(`SELECT 1 AS purchased FROM paid_access_passes WHERE user_email = ? LIMIT 1`).bind(email).first<{ purchased: number }>(),
     getD1().prepare(`SELECT id, pass_code, coins, access_hours, recipient_email, status, created_at, claimed_at, expires_at FROM sponsored_access_passes WHERE donor_email = ? ORDER BY created_at DESC LIMIT 25`).bind(email).all<SponsoredPassRow>(),
-    getD1().prepare(`SELECT id, amount_paid, currency, status, plan_interval, discount_percent, paid_at FROM payment_history WHERE user_email = ? ORDER BY paid_at DESC LIMIT 50`).bind(email).all<PaymentRow>(),
+    getD1().prepare(`SELECT id, amount_paid, currency, status, plan_interval, discount_percent, promotion_code, refunded_amount, receipt_url, invoice_pdf_url, failure_reason, paid_at FROM payment_history WHERE user_email = ? ORDER BY paid_at DESC LIMIT 50`).bind(email).all<PaymentRow>(),
+    getD1().prepare(`SELECT id, kind, title, message, action_url, created_at FROM billing_notifications WHERE user_email = ? AND status = 'unread' ORDER BY created_at DESC LIMIT 8`).bind(email).all<{ id: number; kind: string; title: string; message: string; action_url: string | null; created_at: string }>(),
     getD1().prepare(`SELECT
       (SELECT COUNT(*) * 40 FROM study_tasks WHERE user_email = ? AND completed_at IS NOT NULL) AS earned,
       COALESCE((SELECT SUM(coins) FROM capi_helper_gifts WHERE donor_email = ?), 0)
@@ -552,10 +656,15 @@ export async function getBillingSummary(email: string): Promise<BillingSummary> 
       planInterval: subscription.plan_interval,
       status: subscription.status,
       discountPercent: subscription.discount_percent,
+      promotionCode: subscription.promotion_code,
+      currentPeriodStart: subscription.current_period_start,
       currentPeriodEnd: subscription.current_period_end,
+      graceUntil: subscription.grace_until,
+      lastPaymentError: subscription.last_payment_error,
       cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
       hasCustomer: Boolean(subscription.stripe_customer_id),
     } : null,
+    manualGrant: manualGrant ? { id: manualGrant.id, planInterval: manualGrant.plan_interval, expiresAt: manualGrant.expires_at, note: manualGrant.note } : null,
     activePass: activePass ? { expiresAt: activePass.expires_at, accessHours: activePass.access_hours } : null,
     starterPass: starterPass ? { expiresAt: starterPass.expires_at, accessDays: 7 } : null,
     starterCredit: starterCredit ? { passId: starterCredit.id, amount: starterCredit.credit_amount } : null,
@@ -578,7 +687,20 @@ export async function getBillingSummary(email: string): Promise<BillingSummary> 
       status: payment.status,
       planInterval: payment.plan_interval,
       discountPercent: payment.discount_percent,
+      promotionCode: payment.promotion_code,
+      refundedAmount: payment.refunded_amount,
+      receiptUrl: payment.receipt_url,
+      invoicePdfUrl: payment.invoice_pdf_url,
+      failureReason: payment.failure_reason,
       paidAt: payment.paid_at,
+    })),
+    notifications: (notificationsResult.results ?? []).map((notification) => ({
+      id: notification.id,
+      kind: notification.kind,
+      title: notification.title,
+      message: notification.message,
+      actionUrl: notification.action_url,
+      createdAt: notification.created_at,
     })),
   };
 }
@@ -587,12 +709,17 @@ export async function hasLearningAccess(email: string) {
   await ensureAppSchema();
   const now = new Date().toISOString();
   const result = await getD1().prepare(`SELECT 1 AS allowed WHERE EXISTS (
-    SELECT 1 FROM subscriptions WHERE user_email = ? AND status IN ('active', 'trialing')
+    SELECT 1 FROM subscriptions WHERE user_email = ? AND (
+      (status IN ('active', 'trialing') AND (current_period_end IS NULL OR current_period_end > ?))
+      OR (status = 'past_due' AND grace_until > ?)
+    )
+  ) OR EXISTS (
+    SELECT 1 FROM manual_access_grants WHERE user_email = ? AND status = 'active' AND starts_at <= ? AND expires_at > ?
   ) OR EXISTS (
     SELECT 1 FROM sponsored_access_passes WHERE recipient_email = ? AND status = 'claimed' AND expires_at > ?
   ) OR EXISTS (
     SELECT 1 FROM paid_access_passes WHERE user_email = ? AND status = 'active' AND expires_at > ?
-  ) LIMIT 1`).bind(email, email, now, email, now).first<{ allowed: number }>();
+  ) LIMIT 1`).bind(email, now, now, email, now, now, email, now, email, now).first<{ allowed: number }>();
   return Boolean(result?.allowed);
 }
 
