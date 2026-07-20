@@ -340,6 +340,50 @@ export function ensureAppSchema() {
         body TEXT NOT NULL, visible_to_student INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
       )`),
       getD1().prepare("CREATE INDEX IF NOT EXISTS student_notes_student_created_idx ON student_notes (student_email, created_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS mock_tests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'draft', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS mock_tests_status_updated_idx ON mock_tests (status, updated_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS mock_test_versions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, test_id INTEGER NOT NULL, label TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft', reading_minutes INTEGER NOT NULL DEFAULT 60,
+        listening_minutes INTEGER NOT NULL DEFAULT 40, writing_minutes INTEGER NOT NULL DEFAULT 60,
+        speaking_minutes INTEGER NOT NULL DEFAULT 15, items_json TEXT NOT NULL DEFAULT '[]',
+        created_by TEXT NOT NULL, created_at TEXT NOT NULL, published_at TEXT
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS mock_test_versions_test_label_uidx ON mock_test_versions (test_id, label)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS mock_test_versions_status_published_idx ON mock_test_versions (status, published_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS mock_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, test_id INTEGER NOT NULL, version_id INTEGER NOT NULL,
+        user_email TEXT NOT NULL, user_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'in_progress',
+        exam_mode INTEGER NOT NULL DEFAULT 1, current_item_index INTEGER NOT NULL DEFAULT 0,
+        current_section TEXT NOT NULL DEFAULT 'Reading', section_started_at TEXT NOT NULL,
+        answers_json TEXT NOT NULL DEFAULT '{}', reading_correct INTEGER, reading_total INTEGER,
+        listening_correct INTEGER, listening_total INTEGER, reading_band REAL, listening_band REAL,
+        writing_ai_band REAL, speaking_ai_band REAL, writing_teacher_band REAL, speaking_teacher_band REAL,
+        overall_band REAL, teacher_comment TEXT NOT NULL DEFAULT '', started_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL, submitted_at TEXT
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS mock_attempts_user_status_updated_idx ON mock_attempts (user_email, status, updated_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS mock_attempts_user_submitted_idx ON mock_attempts (user_email, submitted_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS mock_attempts_version_status_idx ON mock_attempts (version_id, status)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS mock_item_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, attempt_id INTEGER NOT NULL, item_key TEXT NOT NULL,
+        skill TEXT NOT NULL, question_type TEXT NOT NULL, correct INTEGER, raw_score REAL NOT NULL DEFAULT 0,
+        max_score REAL NOT NULL DEFAULT 1, ai_band REAL, teacher_band REAL,
+        feedback_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS mock_item_results_attempt_item_uidx ON mock_item_results (attempt_id, item_key)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS mock_item_results_type_correct_idx ON mock_item_results (question_type, correct)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS mock_recordings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, attempt_id INTEGER NOT NULL, item_key TEXT NOT NULL,
+        user_email TEXT NOT NULL, r2_key TEXT NOT NULL, file_name TEXT NOT NULL, content_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL, transcript TEXT NOT NULL DEFAULT '', ai_feedback_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS mock_recordings_attempt_item_uidx ON mock_recordings (attempt_id, item_key)"),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS mock_recordings_r2_key_uidx ON mock_recordings (r2_key)"),
       getD1().prepare(`CREATE TABLE IF NOT EXISTS media_assets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         owner_email TEXT NOT NULL,

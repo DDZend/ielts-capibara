@@ -4,7 +4,7 @@ import test from "node:test";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const assessmentSchemaOnly = (source) => source.slice(0, source.indexOf("export const mediaAssets"));
+const assessmentSchemaOnly = (source) => source.slice(0, source.indexOf("export const mockTests"));
 
 test("all requested routes are present", async () => {
   await Promise.all([
@@ -21,6 +21,7 @@ test("all requested routes are present", async () => {
     access(new URL("app/creator/page.tsx", root)),
     access(new URL("app/classes/page.tsx", root)),
     access(new URL("app/creator/classes/page.tsx", root)),
+    access(new URL("app/creator/mock-tests/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
@@ -37,6 +38,11 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/creator/media/route.ts", root)),
     access(new URL("app/api/classes/route.ts", root)),
     access(new URL("app/api/creator/classes/route.ts", root)),
+    access(new URL("app/api/mock-exams/route.ts", root)),
+    access(new URL("app/api/mock-exams/writing/route.ts", root)),
+    access(new URL("app/api/mock-exams/speaking/route.ts", root)),
+    access(new URL("app/api/mock-exams/recording/route.ts", root)),
+    access(new URL("app/api/creator/mock-tests/route.ts", root)),
     access(new URL("app/api/media/[id]/route.ts", root)),
   ]);
 });
@@ -80,16 +86,28 @@ test("only calculated metrics are persisted", async () => {
   assert.doesNotMatch(api, /writingText|audio|recording/);
 });
 
-test("mock flow never persists writing text or audio", async () => {
-  const [schema, mockApi, mockClient] = await Promise.all([
+test("mock flow durably saves recoverable answers and protects stored recordings", async () => {
+  const [schema, mockApi, mockClient, recordingApi, migration] = await Promise.all([
     read("db/schema.ts"),
-    read("app/api/mock-results/route.ts"),
+    read("app/api/mock-exams/route.ts"),
     read("app/mock-test/MockTestClient.tsx"),
+    read("app/api/mock-exams/recording/route.ts"),
+    read("drizzle/0009_adorable_nighthawk.sql"),
   ]);
-  assert.doesNotMatch(assessmentSchemaOnly(schema), /writingText|writing_text|audio|recording/i);
-  assert.doesNotMatch(mockApi, /writingText|writing_text|audio|recording/i);
+  for (const source of [schema, migration]) {
+    assert.match(source, /mockAttempts|mock_attempts/);
+    assert.match(source, /answersJson|answers_json/);
+    assert.match(source, /mockRecordings|mock_recordings/);
+    assert.match(source, /r2Key|r2_key/);
+  }
+  assert.match(mockApi, /autosaveMockAttempt/);
+  assert.match(mockApi, /getApiLearningUser/);
   assert.match(mockClient, /navigator\.mediaDevices\.getUserMedia/);
-  assert.doesNotMatch(mockClient, /FormData|audioBlob|new Blob/);
+  assert.match(mockClient, /new FormData/);
+  assert.match(mockClient, /Offline — recovery queued/);
+  assert.match(recordingApi, /getApiCreatorUser/);
+  assert.match(recordingApi, /getApiLearningUser/);
+  assert.match(recordingApi, /Cache-Control.*private, no-store/);
 });
 
 test("assessment uses temporary redirect storage but no permanent browser store", async () => {
@@ -505,4 +523,79 @@ test("teacher and class management connects package allowances to protected serv
   for (const label of ["Upcoming classes", "Available teacher slots", "Homework", "Feedback timeline"]) assert.match(studentUi, new RegExp(label));
   assert.match(studentUi, /meetingUrl/);
   assert.match(dashboard, /href="\/classes"/);
+});
+
+test("mock-test studio builds reordered versions from the creator question library", async () => {
+  const [page, client, api, creator, engine] = await Promise.all([
+    read("app/creator/mock-tests/page.tsx"),
+    read("app/creator/mock-tests/MockTestStudioClient.tsx"),
+    read("app/api/creator/mock-tests/route.ts"),
+    read("app/creator/CreatorStudioClient.tsx"),
+    read("db/mock-engine.ts"),
+  ]);
+  assert.match(page, /requireCreatorUser\("\/creator\/mock-tests"\)/);
+  assert.match(api, /getApiCreatorUser/);
+  assert.match(api, /lesson\.exercises/);
+  assert.match(api, /refs/);
+  assert.match(client, /Exam order/);
+  assert.match(client, /move\(index, -1\)/);
+  assert.match(client, /40 Reading, 40 Listening, 2 Writing and 3 Speaking/);
+  assert.match(engine, /Version A/);
+  assert.match(engine, /Version B/);
+  assert.match(creator, /href="\/creator\/mock-tests"/);
+});
+
+test("secure exam mode includes timers, one-play listening, autosave and four-skill submission", async () => {
+  const [client, api, engine] = await Promise.all([
+    read("app/mock-test/MockTestClient.tsx"),
+    read("app/api/mock-exams/route.ts"),
+    read("lib/mock-engine.ts"),
+  ]);
+  for (const label of ["Secure exam mode", "no transcript or pause", "All responses saved", "One play only", "Submit full mock"]) assert.match(client, new RegExp(label));
+  assert.match(client, /setInterval\(\(\) => setRemaining/);
+  assert.match(client, /listeningPlayed/);
+  assert.match(client, /action: "autosave"/);
+  assert.match(api, /submitMockAttempt/);
+  assert.match(engine, /objectiveBand/);
+  assert.match(engine, /overallMockBand/);
+});
+
+test("Writing and Speaking mock assessments are AI-backed, bounded and teacher-moderated", async () => {
+  const [writing, speaking, teacherApi, database] = await Promise.all([
+    read("app/api/mock-exams/writing/route.ts"),
+    read("app/api/mock-exams/speaking/route.ts"),
+    read("app/api/creator/mock-tests/route.ts"),
+    read("db/mock-engine.ts"),
+  ]);
+  for (const source of [writing, speaking]) {
+    assert.match(source, /OPENAI_API_KEY/);
+    assert.match(source, /getApiLearningUser/);
+    assert.match(source, /saveMockAiAssessment/);
+    assert.match(source, /json_schema/);
+  }
+  assert.match(speaking, /gpt-4o-transcribe/);
+  assert.match(speaking, /saveMockRecording/);
+  assert.match(teacherApi, /moderateMockAssessment/);
+  assert.match(database, /teacher_band/);
+  assert.match(database, /writing_teacher_band/);
+  assert.match(database, /speaking_teacher_band/);
+});
+
+test("mock reports compare weeks, reveal detailed mistakes and aggregate difficulty by task type", async () => {
+  const [client, database, schema, migration] = await Promise.all([
+    read("app/mock-test/MockTestClient.tsx"),
+    read("db/mock-engine.ts"),
+    read("db/schema.ts"),
+    read("drizzle/0009_adorable_nighthawk.sql"),
+  ]);
+  assert.match(client, /WEEKLY COMPARISON/);
+  assert.match(client, /Detailed mistake review/);
+  assert.match(client, /different version will unlock/i);
+  assert.match(database, /difficultyPercent/);
+  assert.match(database, /question_type/);
+  assert.match(database, /mock_results/);
+  for (const table of ["mock_tests", "mock_test_versions", "mock_attempts", "mock_item_results", "mock_recordings"]) {
+    assert.ok(migration.includes(`CREATE TABLE \`${table}\``));
+    assert.match(schema, new RegExp(table.replaceAll("_", ""), "i"));
+  }
 });

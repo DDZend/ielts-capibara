@@ -515,6 +515,123 @@ export const studentNotes = sqliteTable(
   (table) => [index("student_notes_student_created_idx").on(table.studentEmail, table.createdAt)],
 );
 
+export const mockTests = sqliteTable(
+  "mock_tests",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    status: text("status").notNull().default("draft"),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("mock_tests_status_updated_idx").on(table.status, table.updatedAt)],
+);
+
+export const mockTestVersions = sqliteTable(
+  "mock_test_versions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    testId: integer("test_id").notNull(),
+    label: text("label").notNull(),
+    status: text("status").notNull().default("draft"),
+    readingMinutes: integer("reading_minutes").notNull().default(60),
+    listeningMinutes: integer("listening_minutes").notNull().default(40),
+    writingMinutes: integer("writing_minutes").notNull().default(60),
+    speakingMinutes: integer("speaking_minutes").notNull().default(15),
+    itemsJson: text("items_json").notNull().default("[]"),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at").notNull(),
+    publishedAt: text("published_at"),
+  },
+  (table) => [
+    uniqueIndex("mock_test_versions_test_label_uidx").on(table.testId, table.label),
+    index("mock_test_versions_status_published_idx").on(table.status, table.publishedAt),
+  ],
+);
+
+export const mockAttempts = sqliteTable(
+  "mock_attempts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    testId: integer("test_id").notNull(),
+    versionId: integer("version_id").notNull(),
+    userEmail: text("user_email").notNull(),
+    userName: text("user_name").notNull(),
+    status: text("status").notNull().default("in_progress"),
+    examMode: integer("exam_mode", { mode: "boolean" }).notNull().default(true),
+    currentItemIndex: integer("current_item_index").notNull().default(0),
+    currentSection: text("current_section").notNull().default("Reading"),
+    sectionStartedAt: text("section_started_at").notNull(),
+    answersJson: text("answers_json").notNull().default("{}"),
+    readingCorrect: integer("reading_correct"),
+    readingTotal: integer("reading_total"),
+    listeningCorrect: integer("listening_correct"),
+    listeningTotal: integer("listening_total"),
+    readingBand: real("reading_band"),
+    listeningBand: real("listening_band"),
+    writingAiBand: real("writing_ai_band"),
+    speakingAiBand: real("speaking_ai_band"),
+    writingTeacherBand: real("writing_teacher_band"),
+    speakingTeacherBand: real("speaking_teacher_band"),
+    overallBand: real("overall_band"),
+    teacherComment: text("teacher_comment").notNull().default(""),
+    startedAt: text("started_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    submittedAt: text("submitted_at"),
+  },
+  (table) => [
+    index("mock_attempts_user_status_updated_idx").on(table.userEmail, table.status, table.updatedAt),
+    index("mock_attempts_user_submitted_idx").on(table.userEmail, table.submittedAt),
+    index("mock_attempts_version_status_idx").on(table.versionId, table.status),
+  ],
+);
+
+export const mockItemResults = sqliteTable(
+  "mock_item_results",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    attemptId: integer("attempt_id").notNull(),
+    itemKey: text("item_key").notNull(),
+    skill: text("skill").notNull(),
+    questionType: text("question_type").notNull(),
+    correct: integer("correct", { mode: "boolean" }),
+    rawScore: real("raw_score").notNull().default(0),
+    maxScore: real("max_score").notNull().default(1),
+    aiBand: real("ai_band"),
+    teacherBand: real("teacher_band"),
+    feedbackJson: text("feedback_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mock_item_results_attempt_item_uidx").on(table.attemptId, table.itemKey),
+    index("mock_item_results_type_correct_idx").on(table.questionType, table.correct),
+  ],
+);
+
+export const mockRecordings = sqliteTable(
+  "mock_recordings",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    attemptId: integer("attempt_id").notNull(),
+    itemKey: text("item_key").notNull(),
+    userEmail: text("user_email").notNull(),
+    r2Key: text("r2_key").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    transcript: text("transcript").notNull().default(""),
+    aiFeedbackJson: text("ai_feedback_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("mock_recordings_attempt_item_uidx").on(table.attemptId, table.itemKey),
+    uniqueIndex("mock_recordings_r2_key_uidx").on(table.r2Key),
+  ],
+);
+
 export const mediaAssets = sqliteTable(
   "media_assets",
   {
