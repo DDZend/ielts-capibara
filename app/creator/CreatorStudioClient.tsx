@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import type { CourseModule } from "../../lib/course-catalog";
 import { COURSE_MODULES } from "../../lib/course-catalog";
 import type { CreatorLessonContent, LessonStatus } from "../../lib/creator-content";
+import type { CourseExercise } from "../../lib/exercise-types";
+import { ExerciseBuilder } from "./ExerciseBuilder";
 import {
   ArrowDown,
   ArrowLeft,
@@ -32,7 +34,7 @@ type Editor = {
   title: string;
   status: LessonStatus;
   vocabularyText: string;
-  exercisesText: string;
+  exercises: CourseExercise[];
   transcript: string;
   answerKeyText: string;
 };
@@ -45,7 +47,7 @@ function toEditor(lesson: CreatorLessonContent): Editor {
     title: lesson.title,
     status: lesson.status,
     vocabularyText: lesson.vocabulary.join("\n"),
-    exercisesText: lesson.exercises.join("\n"),
+    exercises: lesson.exercises,
     transcript: lesson.transcript,
     answerKeyText: lesson.answerKey.join("\n"),
   };
@@ -60,7 +62,7 @@ export function CreatorStudioClient({ userName, initialLessons }: { userName: st
   const [activeModule, setActiveModule] = useState<CourseModule>("Speaking");
   const [activeLessonId, setActiveLessonId] = useState(initialLessons[0]?.lessonId ?? "");
   const firstLesson = initialLessons[0];
-  const [editor, setEditor] = useState<Editor>(firstLesson ? toEditor(firstLesson) : { title: "", status: "draft", vocabularyText: "", exercisesText: "", transcript: "", answerKeyText: "" });
+  const [editor, setEditor] = useState<Editor>(firstLesson ? toEditor(firstLesson) : { title: "", status: "draft", vocabularyText: "", exercises: [], transcript: "", answerKeyText: "" });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"video" | "audio" | null>(null);
   const [message, setMessage] = useState("");
@@ -103,7 +105,7 @@ export function CreatorStudioClient({ userName, initialLessons }: { userName: st
           title: editor.title,
           status,
           vocabulary: lines(editor.vocabularyText),
-          exercises: lines(editor.exercisesText),
+          exercises: editor.exercises,
           transcript: editor.transcript,
           answerKey: lines(editor.answerKeyText),
         }),
@@ -228,9 +230,9 @@ export function CreatorStudioClient({ userName, initialLessons }: { userName: st
           </section>
 
           <section className="creator-panel creator-material-grid">
-            <header><span>03</span><div><h3>Learning materials</h3><p>Write one vocabulary item, task, or answer on each line.</p></div></header>
+            <header><span>03</span><div><h3>Learning materials</h3><p>Add vocabulary, build interactive exercises, and provide transcripts or additional answer notes.</p></div></header>
             <label><span><BookOpen /> Vocabulary</span><textarea value={editor.vocabularyText} onChange={(event) => setEditor((current) => ({ ...current, vocabularyText: event.target.value }))} placeholder={'well-connected — easy to reach by transport\nOn balance — used to give a final judgement'} /></label>
-            <label><span><FileText /> Exercises</span><textarea value={editor.exercisesText} onChange={(event) => setEditor((current) => ({ ...current, exercisesText: event.target.value }))} placeholder={'Use “well-connected” in a sentence.\nRecord a 45-second answer using two new phrases.'} /></label>
+            <div className="creator-exercise-builder wide"><span><FileText /> Interactive exercises</span><ExerciseBuilder exercises={editor.exercises} onChange={(exercises) => setEditor((current) => ({ ...current, exercises }))} /></div>
             <label className="wide"><span><FileAudio /> Transcript</span><textarea value={editor.transcript} onChange={(event) => setEditor((current) => ({ ...current, transcript: event.target.value }))} placeholder="Paste the complete video or listening transcript here…" /></label>
             <label className="wide"><span><FileKey /> Answer key</span><textarea value={editor.answerKeyText} onChange={(event) => setEditor((current) => ({ ...current, answerKeyText: event.target.value }))} placeholder={'1. well-connected\n2. Answers will vary; must include a reason and example.'} /></label>
           </section>

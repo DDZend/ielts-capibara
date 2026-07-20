@@ -322,7 +322,7 @@ test("lesson progress is user-owned and the dashboard adapts the connected journ
 });
 
 test("Creator Studio is private, persistent and controls every student module", async () => {
-  const [page, auth, lessonsApi, mediaApi, deliveryApi, schema, migration, hosting, dashboard, publishedContent] = await Promise.all([
+  const [page, auth, lessonsApi, mediaApi, deliveryApi, schema, migration, hosting, dashboard, publishedContent, exerciseTypes, exerciseBuilder, exerciseRunner] = await Promise.all([
     read("app/creator/page.tsx"),
     read("app/creator-auth.ts"),
     read("app/api/creator/lessons/route.ts"),
@@ -333,6 +333,9 @@ test("Creator Studio is private, persistent and controls every student module", 
     read(".openai/hosting.json"),
     read("app/dashboard/DashboardClient.tsx"),
     read("app/PublishedLessonContent.tsx"),
+    read("lib/exercise-types.ts"),
+    read("app/creator/ExerciseBuilder.tsx"),
+    read("app/PublishedExercises.tsx"),
   ]);
   assert.match(page, /requireCreatorUser\("\/creator"\)/);
   assert.match(auth, /TEACHER_EMAILS/);
@@ -355,6 +358,15 @@ test("Creator Studio is private, persistent and controls every student module", 
   assert.match(dashboard, /Creator Studio/);
   assert.match(publishedContent, /Teacher video/);
   assert.match(publishedContent, /Lesson materials/);
+  const exerciseTypeIds = ["single-choice", "multiple-choice", "true-false-not-given", "yes-no-not-given", "matching", "categorisation", "ordering", "fill-gap", "short-answer", "paragraph-response", "essay-response", "speaking-response"];
+  for (const type of exerciseTypeIds) assert.match(exerciseTypes, new RegExp(`id: "${type}"`));
+  assert.match(exerciseBuilder, /Choose an interaction/);
+  assert.match(exerciseBuilder, /Matching pairs/);
+  assert.match(exerciseBuilder, /Accepted answers/);
+  assert.match(exerciseRunner, /new MediaRecorder/);
+  assert.match(exerciseRunner, /student-matching/);
+  assert.match(exerciseRunner, /student-ordering/);
+  assert.match(lessonsApi, /cleanExercises/);
   for (const client of ["speaking", "writing", "reading", "listening"]) {
     const source = await read(`app/${client}/${client[0].toUpperCase()}${client.slice(1)}Client.tsx`);
     assert.match(source, /applyPublishedLessonOrder/);

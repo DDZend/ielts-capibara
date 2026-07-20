@@ -1,6 +1,8 @@
 import { env } from "cloudflare:workers";
 import { COURSE_CATALOG, type CourseModule } from "../lib/course-catalog";
 import type { CreatorLessonContent, LessonStatus, StudentLessonContent } from "../lib/creator-content";
+import type { CourseExercise } from "../lib/exercise-types";
+import { isExerciseType } from "../lib/exercise-types";
 import { ensureAppSchema, getD1 } from "./index";
 
 type CreatorLessonRow = {
@@ -30,6 +32,48 @@ function parseStringList(value: string) {
   }
 }
 
+function parseExercises(value: string): CourseExercise[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item, index) => {
+      if (typeof item === "string") return [{
+        id: `legacy-${index}`,
+        type: "short-answer" as const,
+        title: `Exercise ${index + 1}`,
+        instruction: "",
+        prompt: item,
+        options: [],
+        correctAnswers: [],
+        pairs: [],
+        categories: [],
+        sampleAnswer: "",
+        maxWords: null,
+        recordingSeconds: null,
+      }];
+      if (!item || typeof item !== "object") return [];
+      const candidate = item as Partial<CourseExercise>;
+      if (typeof candidate.id !== "string" || !isExerciseType(candidate.type)) return [];
+      return [{
+        id: candidate.id,
+        type: candidate.type,
+        title: typeof candidate.title === "string" ? candidate.title : "Exercise",
+        instruction: typeof candidate.instruction === "string" ? candidate.instruction : "",
+        prompt: typeof candidate.prompt === "string" ? candidate.prompt : "",
+        options: Array.isArray(candidate.options) ? candidate.options.filter((option): option is string => typeof option === "string") : [],
+        correctAnswers: Array.isArray(candidate.correctAnswers) ? candidate.correctAnswers.filter((answer): answer is string => typeof answer === "string") : [],
+        pairs: Array.isArray(candidate.pairs) ? candidate.pairs.filter((pair): pair is { left: string; right: string } => Boolean(pair) && typeof pair.left === "string" && typeof pair.right === "string") : [],
+        categories: Array.isArray(candidate.categories) ? candidate.categories.filter((category): category is { name: string; items: string[] } => Boolean(category) && typeof category.name === "string" && Array.isArray(category.items) && category.items.every((entry) => typeof entry === "string")) : [],
+        sampleAnswer: typeof candidate.sampleAnswer === "string" ? candidate.sampleAnswer : "",
+        maxWords: typeof candidate.maxWords === "number" ? candidate.maxWords : null,
+        recordingSeconds: typeof candidate.recordingSeconds === "number" ? candidate.recordingSeconds : null,
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
+
 function mapLesson(row: CreatorLessonRow): CreatorLessonContent {
   return {
     id: row.id,
@@ -45,7 +89,7 @@ function mapLesson(row: CreatorLessonRow): CreatorLessonContent {
     audioFileName: row.audio_file_name,
     audioUrl: row.audio_media_id ? `/api/media/${row.audio_media_id}` : null,
     vocabulary: parseStringList(row.vocabulary_json),
-    exercises: parseStringList(row.exercises_json),
+    exercises: parseExercises(row.exercises_json),
     transcript: row.transcript,
     answerKey: parseStringList(row.answer_key_json),
     updatedAt: row.updated_at,
@@ -126,7 +170,7 @@ export async function updateCreatorLesson(input: {
   title: string;
   status: LessonStatus;
   vocabulary: string[];
-  exercises: string[];
+  exercises: CourseExercise[];
   transcript: string;
   answerKey: string[];
   updatedBy: string;

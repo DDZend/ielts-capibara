@@ -1,4 +1,5 @@
 import type { CourseModule } from "./course-catalog";
+import type { CourseExercise } from "./exercise-types";
 
 export type LessonStatus = "published" | "draft" | "hidden";
 
@@ -16,7 +17,7 @@ export type CreatorLessonContent = {
   audioFileName: string | null;
   audioUrl: string | null;
   vocabulary: string[];
-  exercises: string[];
+  exercises: CourseExercise[];
   transcript: string;
   answerKey: string[];
   updatedAt: string;
@@ -31,7 +32,7 @@ export type StudentLessonContent = {
   videoUrl: string | null;
   audioUrl: string | null;
   vocabulary: string[];
-  exercises: string[];
+  exercises: CourseExercise[];
   transcript: string;
   answerKey: string[];
 };
