@@ -561,11 +561,12 @@ test("secure exam mode includes timers, one-play listening, autosave and four-sk
 });
 
 test("Writing and Speaking mock assessments are AI-backed, bounded and teacher-moderated", async () => {
-  const [writing, speaking, teacherApi, database] = await Promise.all([
+  const [writing, speaking, teacherApi, database, teacherUi] = await Promise.all([
     read("app/api/mock-exams/writing/route.ts"),
     read("app/api/mock-exams/speaking/route.ts"),
     read("app/api/creator/mock-tests/route.ts"),
     read("db/mock-engine.ts"),
+    read("app/creator/mock-tests/MockTestStudioClient.tsx"),
   ]);
   for (const source of [writing, speaking]) {
     assert.match(source, /OPENAI_API_KEY/);
@@ -579,6 +580,10 @@ test("Writing and Speaking mock assessments are AI-backed, bounded and teacher-m
   assert.match(database, /teacher_band/);
   assert.match(database, /writing_teacher_band/);
   assert.match(database, /speaking_teacher_band/);
+  assert.match(database, /mock_recordings/);
+  assert.match(database, /response: item\.skill === "Writing"/);
+  assert.match(teacherUi, /Student essay/);
+  assert.match(teacherUi, /Speaking transcript/);
 });
 
 test("mock reports compare weeks, reveal detailed mistakes and aggregate difficulty by task type", async () => {

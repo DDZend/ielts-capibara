@@ -444,19 +444,33 @@ export async function getTeacherMockDashboard() {
       SUM(CASE WHEN correct = 0 THEN 1 ELSE 0 END) AS mistakes
       FROM mock_item_results WHERE correct IS NOT NULL GROUP BY skill, question_type ORDER BY mistakes DESC`).all<{ skill: MockSkill; question_type: string; attempts: number; mistakes: number }>(),
   ]);
-  const assessmentRows = await getD1().prepare(`SELECT attempt_id, item_key, skill, ai_band, teacher_band, feedback_json
-    FROM mock_item_results WHERE attempt_id IN (SELECT id FROM mock_attempts WHERE status IN ('submitted','reviewed'))
-    AND skill IN ('Writing','Speaking') ORDER BY attempt_id DESC`).all<{ attempt_id: number; item_key: string; skill: MockSkill; ai_band: number | null; teacher_band: number | null; feedback_json: string }>();
+  const [assessmentRows, recordingRows] = await Promise.all([
+    getD1().prepare(`SELECT attempt_id, item_key, skill, ai_band, teacher_band, feedback_json
+      FROM mock_item_results WHERE attempt_id IN (SELECT id FROM mock_attempts WHERE status IN ('submitted','reviewed'))
+      AND skill IN ('Writing','Speaking') ORDER BY attempt_id DESC`).all<{ attempt_id: number; item_key: string; skill: MockSkill; ai_band: number | null; teacher_band: number | null; feedback_json: string }>(),
+    getD1().prepare(`SELECT attempt_id, item_key, transcript FROM mock_recordings
+      WHERE attempt_id IN (SELECT id FROM mock_attempts WHERE status IN ('submitted','reviewed'))`)
+      .all<{ attempt_id: number; item_key: string; transcript: string }>(),
+  ]);
   return {
     tests: tests.results ?? [],
     versions: (versions.results ?? []).map(versionSummary),
-    attempts: (attempts.results ?? []).map((row) => ({
-      ...attemptSummary(row), userEmail: row.user_email, userName: row.user_name,
-      assessments: (assessmentRows.results ?? []).filter((item) => item.attempt_id === row.id).map((item) => ({
-        itemKey: item.item_key, skill: item.skill, aiBand: item.ai_band, teacherBand: item.teacher_band,
-        feedback: parseObject(item.feedback_json),
-      })),
-    })),
+    attempts: (attempts.results ?? []).map((row) => {
+      const items = parseMockItems(row.items_json);
+      const answers = parseObject(row.answers_json);
+      return {
+        ...attemptSummary(row), userEmail: row.user_email, userName: row.user_name,
+        assessments: (assessmentRows.results ?? []).filter((item) => item.attempt_id === row.id).map((item) => {
+          const examItem = items.find((candidate) => candidate.key === item.item_key);
+          const recording = (recordingRows.results ?? []).find((candidate) => candidate.attempt_id === row.id && candidate.item_key === item.item_key);
+          return {
+            itemKey: item.item_key, skill: item.skill, aiBand: item.ai_band, teacherBand: item.teacher_band,
+            prompt: examItem?.prompt ?? "", response: item.skill === "Writing" ? String(answers[item.item_key] ?? "") : recording?.transcript ?? "",
+            feedback: parseObject(item.feedback_json),
+          };
+        }),
+      };
+    }),
     analytics: (analytics.results ?? []).map((row) => ({
       skill: row.skill, questionType: row.question_type, attempts: Number(row.attempts), mistakes: Number(row.mistakes),
       difficultyPercent: Number(row.attempts) ? Math.round(Number(row.mistakes) / Number(row.attempts) * 100) : 0,
