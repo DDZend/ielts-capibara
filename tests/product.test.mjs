@@ -19,6 +19,8 @@ test("all requested routes are present", async () => {
     access(new URL("app/billing/page.tsx", root)),
     access(new URL("app/sponsored-access/page.tsx", root)),
     access(new URL("app/creator/page.tsx", root)),
+    access(new URL("app/classes/page.tsx", root)),
+    access(new URL("app/creator/classes/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
@@ -33,6 +35,8 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/sponsored-pass/route.ts", root)),
     access(new URL("app/api/creator/lessons/route.ts", root)),
     access(new URL("app/api/creator/media/route.ts", root)),
+    access(new URL("app/api/classes/route.ts", root)),
+    access(new URL("app/api/creator/classes/route.ts", root)),
     access(new URL("app/api/media/[id]/route.ts", root)),
   ]);
 });
@@ -467,4 +471,38 @@ test("membership lifecycle supports upgrades, promotions, expiry, recovery, rece
   assert.match(studentBilling, /Have a promotion code/);
   assert.match(studentBilling, /View receipt/);
   assert.match(studentBilling, /Upgrade to/);
+});
+
+test("teacher and class management connects package allowances to protected service delivery", async () => {
+  const [allowances, classDb, teacherApi, studentApi, teacherUi, studentUi, schema, migration, database, dashboard] = await Promise.all([
+    read("lib/class-allowances.ts"),
+    read("db/classes.ts"),
+    read("app/api/creator/classes/route.ts"),
+    read("app/api/classes/route.ts"),
+    read("app/creator/classes/ClassManagementClient.tsx"),
+    read("app/classes/ClassesClient.tsx"),
+    read("db/schema.ts"),
+    read("drizzle/0008_watery_firebird.sql"),
+    read("db/index.ts"),
+    read("app/dashboard/DashboardClient.tsx"),
+  ]);
+  assert.match(allowances, /tier === "silver"[\s\S]*?weeklyLimit: 0/);
+  assert.match(allowances, /tier === "gold"[\s\S]*?weeklyLimit: 2[\s\S]*?sessionType: "group"/);
+  assert.match(allowances, /tier === "platinum"[\s\S]*?weeklyLimit: 3[\s\S]*?sessionType: "individual"/);
+  assert.match(classDb, /validateStudentBooking/);
+  assert.match(classDb, /bookedThisWeek/);
+  assert.match(classDb, /This class belongs to another cohort/);
+  assert.match(classDb, /Choose an individual slot with your assigned teacher/);
+  assert.match(teacherApi, /getApiCreatorUser/);
+  assert.match(studentApi, /getChatGPTUser/);
+  for (const action of ["create_teacher", "create_cohort", "add_cohort_member", "assign_teacher", "add_availability", "schedule_session", "cancel_session", "mark_attendance", "assign_homework", "review_homework", "add_note"]) assert.match(teacherApi, new RegExp(action));
+  for (const action of ["book", "cancel", "reschedule", "submit_homework"]) assert.match(studentApi, new RegExp(`action === "${action}"`));
+  assert.match(studentApi, /Late cancellation/);
+  for (const table of ["teacher_profiles", "cohorts", "cohort_members", "student_teacher_assignments", "teacher_availability", "class_sessions", "class_bookings", "attendance_records", "homework_assignments", "homework_submissions", "student_notes"]) {
+    for (const source of [schema, migration, database]) assert.match(source, new RegExp(table));
+  }
+  for (const label of ["Students, membership and progress", "Calendar and attendance", "Homework status", "Comments and private notes", "Teaching capacity"]) assert.match(teacherUi, new RegExp(label));
+  for (const label of ["Upcoming classes", "Available teacher slots", "Homework", "Feedback timeline"]) assert.match(studentUi, new RegExp(label));
+  assert.match(studentUi, /meetingUrl/);
+  assert.match(dashboard, /href="\/classes"/);
 });

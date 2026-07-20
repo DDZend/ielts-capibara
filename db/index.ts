@@ -270,6 +270,76 @@ export function ensureAppSchema() {
       )`),
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS billing_notifications_event_uidx ON billing_notifications (stripe_event_id)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS billing_notifications_user_created_at_idx ON billing_notifications (user_email, created_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS teacher_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, display_name TEXT NOT NULL,
+        timezone TEXT NOT NULL DEFAULT 'Asia/Almaty', color TEXT NOT NULL DEFAULT '#16803e', active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS teacher_profiles_email_uidx ON teacher_profiles (email)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS cohorts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, target_band REAL NOT NULL, teacher_email TEXT,
+        start_date TEXT, end_date TEXT, status TEXT NOT NULL DEFAULT 'active', created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS cohorts_teacher_status_idx ON cohorts (teacher_email, status)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS cohort_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, cohort_id INTEGER NOT NULL, student_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active', joined_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS cohort_members_cohort_student_uidx ON cohort_members (cohort_id, student_email)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS cohort_members_student_status_idx ON cohort_members (student_email, status)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS student_teacher_assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, student_email TEXT NOT NULL, teacher_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active', assigned_by TEXT NOT NULL, assigned_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS student_teacher_assignments_student_uidx ON student_teacher_assignments (student_email)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS student_teacher_assignments_teacher_status_idx ON student_teacher_assignments (teacher_email, status)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS teacher_availability (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, teacher_email TEXT NOT NULL, day_of_week INTEGER NOT NULL,
+        start_time TEXT NOT NULL, end_time TEXT NOT NULL, timezone TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS teacher_availability_teacher_day_idx ON teacher_availability (teacher_email, day_of_week)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS class_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, session_type TEXT NOT NULL, cohort_id INTEGER,
+        student_email TEXT, teacher_email TEXT NOT NULL, starts_at TEXT NOT NULL, ends_at TEXT NOT NULL,
+        timezone TEXT NOT NULL, meeting_provider TEXT NOT NULL, meeting_url TEXT NOT NULL, capacity INTEGER NOT NULL DEFAULT 1,
+        status TEXT NOT NULL DEFAULT 'scheduled', cancellation_reason TEXT, cancelled_by TEXT, cancelled_at TEXT,
+        created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS class_sessions_teacher_starts_idx ON class_sessions (teacher_email, starts_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS class_sessions_cohort_starts_idx ON class_sessions (cohort_id, starts_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS class_sessions_student_starts_idx ON class_sessions (student_email, starts_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS class_bookings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, student_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'booked', booked_at TEXT NOT NULL, cancelled_at TEXT, cancellation_reason TEXT,
+        rescheduled_from_session_id INTEGER, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS class_bookings_session_student_uidx ON class_bookings (session_id, student_email)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS class_bookings_student_status_idx ON class_bookings (student_email, status)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS attendance_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL, student_email TEXT NOT NULL,
+        status TEXT NOT NULL, note TEXT, marked_by TEXT NOT NULL, marked_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS attendance_records_session_student_uidx ON attendance_records (session_id, student_email)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS homework_assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, instructions TEXT NOT NULL, module TEXT NOT NULL,
+        lesson_id TEXT, exercise_id TEXT, assigned_to_type TEXT NOT NULL, assigned_to_value TEXT NOT NULL,
+        due_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', assigned_by TEXT NOT NULL, created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS homework_assignments_target_due_idx ON homework_assignments (assigned_to_type, assigned_to_value, due_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS homework_submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, assignment_id INTEGER NOT NULL, student_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'assigned', student_note TEXT, teacher_comment TEXT, submitted_at TEXT,
+        reviewed_at TEXT, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS homework_submissions_assignment_student_uidx ON homework_submissions (assignment_id, student_email)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS homework_submissions_student_status_idx ON homework_submissions (student_email, status)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS student_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, student_email TEXT NOT NULL, teacher_email TEXT NOT NULL,
+        body TEXT NOT NULL, visible_to_student INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS student_notes_student_created_idx ON student_notes (student_email, created_at)"),
       getD1().prepare(`CREATE TABLE IF NOT EXISTS media_assets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         owner_email TEXT NOT NULL,

@@ -323,6 +323,198 @@ export const billingNotifications = sqliteTable(
   ],
 );
 
+export const teacherProfiles = sqliteTable(
+  "teacher_profiles",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    displayName: text("display_name").notNull(),
+    timezone: text("timezone").notNull().default("Asia/Almaty"),
+    color: text("color").notNull().default("#16803e"),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [uniqueIndex("teacher_profiles_email_uidx").on(table.email)],
+);
+
+export const cohorts = sqliteTable(
+  "cohorts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    targetBand: real("target_band").notNull(),
+    teacherEmail: text("teacher_email"),
+    startDate: text("start_date"),
+    endDate: text("end_date"),
+    status: text("status").notNull().default("active"),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("cohorts_teacher_status_idx").on(table.teacherEmail, table.status)],
+);
+
+export const cohortMembers = sqliteTable(
+  "cohort_members",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    cohortId: integer("cohort_id").notNull(),
+    studentEmail: text("student_email").notNull(),
+    status: text("status").notNull().default("active"),
+    joinedAt: text("joined_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("cohort_members_cohort_student_uidx").on(table.cohortId, table.studentEmail),
+    index("cohort_members_student_status_idx").on(table.studentEmail, table.status),
+  ],
+);
+
+export const studentTeacherAssignments = sqliteTable(
+  "student_teacher_assignments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    studentEmail: text("student_email").notNull(),
+    teacherEmail: text("teacher_email").notNull(),
+    status: text("status").notNull().default("active"),
+    assignedBy: text("assigned_by").notNull(),
+    assignedAt: text("assigned_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("student_teacher_assignments_student_uidx").on(table.studentEmail),
+    index("student_teacher_assignments_teacher_status_idx").on(table.teacherEmail, table.status),
+  ],
+);
+
+export const teacherAvailability = sqliteTable(
+  "teacher_availability",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    teacherEmail: text("teacher_email").notNull(),
+    dayOfWeek: integer("day_of_week").notNull(),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time").notNull(),
+    timezone: text("timezone").notNull(),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("teacher_availability_teacher_day_idx").on(table.teacherEmail, table.dayOfWeek)],
+);
+
+export const classSessions = sqliteTable(
+  "class_sessions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    sessionType: text("session_type").notNull(),
+    cohortId: integer("cohort_id"),
+    studentEmail: text("student_email"),
+    teacherEmail: text("teacher_email").notNull(),
+    startsAt: text("starts_at").notNull(),
+    endsAt: text("ends_at").notNull(),
+    timezone: text("timezone").notNull(),
+    meetingProvider: text("meeting_provider").notNull(),
+    meetingUrl: text("meeting_url").notNull(),
+    capacity: integer("capacity").notNull().default(1),
+    status: text("status").notNull().default("scheduled"),
+    cancellationReason: text("cancellation_reason"),
+    cancelledBy: text("cancelled_by"),
+    cancelledAt: text("cancelled_at"),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("class_sessions_teacher_starts_idx").on(table.teacherEmail, table.startsAt),
+    index("class_sessions_cohort_starts_idx").on(table.cohortId, table.startsAt),
+    index("class_sessions_student_starts_idx").on(table.studentEmail, table.startsAt),
+  ],
+);
+
+export const classBookings = sqliteTable(
+  "class_bookings",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id").notNull(),
+    studentEmail: text("student_email").notNull(),
+    status: text("status").notNull().default("booked"),
+    bookedAt: text("booked_at").notNull(),
+    cancelledAt: text("cancelled_at"),
+    cancellationReason: text("cancellation_reason"),
+    rescheduledFromSessionId: integer("rescheduled_from_session_id"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("class_bookings_session_student_uidx").on(table.sessionId, table.studentEmail),
+    index("class_bookings_student_status_idx").on(table.studentEmail, table.status),
+  ],
+);
+
+export const attendanceRecords = sqliteTable(
+  "attendance_records",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sessionId: integer("session_id").notNull(),
+    studentEmail: text("student_email").notNull(),
+    status: text("status").notNull(),
+    note: text("note"),
+    markedBy: text("marked_by").notNull(),
+    markedAt: text("marked_at").notNull(),
+  },
+  (table) => [uniqueIndex("attendance_records_session_student_uidx").on(table.sessionId, table.studentEmail)],
+);
+
+export const homeworkAssignments = sqliteTable(
+  "homework_assignments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    instructions: text("instructions").notNull(),
+    module: text("module").notNull(),
+    lessonId: text("lesson_id"),
+    exerciseId: text("exercise_id"),
+    assignedToType: text("assigned_to_type").notNull(),
+    assignedToValue: text("assigned_to_value").notNull(),
+    dueAt: text("due_at").notNull(),
+    status: text("status").notNull().default("active"),
+    assignedBy: text("assigned_by").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("homework_assignments_target_due_idx").on(table.assignedToType, table.assignedToValue, table.dueAt)],
+);
+
+export const homeworkSubmissions = sqliteTable(
+  "homework_submissions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    assignmentId: integer("assignment_id").notNull(),
+    studentEmail: text("student_email").notNull(),
+    status: text("status").notNull().default("assigned"),
+    studentNote: text("student_note"),
+    teacherComment: text("teacher_comment"),
+    submittedAt: text("submitted_at"),
+    reviewedAt: text("reviewed_at"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("homework_submissions_assignment_student_uidx").on(table.assignmentId, table.studentEmail),
+    index("homework_submissions_student_status_idx").on(table.studentEmail, table.status),
+  ],
+);
+
+export const studentNotes = sqliteTable(
+  "student_notes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    studentEmail: text("student_email").notNull(),
+    teacherEmail: text("teacher_email").notNull(),
+    body: text("body").notNull(),
+    visibleToStudent: integer("visible_to_student", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("student_notes_student_created_idx").on(table.studentEmail, table.createdAt)],
+);
+
 export const mediaAssets = sqliteTable(
   "media_assets",
   {
