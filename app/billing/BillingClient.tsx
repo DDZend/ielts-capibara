@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, Check, CheckCircle2, Clock3, Copy, CreditCard, ExternalLink, Gift, History, LockKeyhole, ReceiptText, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
 import type { BillingSummary } from "../../db";
-import { BILLING_PLANS, discountedAmount, formatUsd } from "../../lib/billing-config";
+import { BILLING_PLANS, billingPlanLabel, discountedAmount, formatCurrency } from "../../lib/billing-config";
 
 type BillingClientProps = {
   userName: string;
@@ -55,7 +55,7 @@ export function BillingClient({ userName, summary, checkoutConfigured, paywallAc
         <div>
           <span className="billing-kicker"><Sparkles /> Membership & sponsored access</span>
           <h1>Choose your path.<br /><em>Keep every achievement.</em></h1>
-          <p>{firstName}, monthly and annual access include all four learning modules, saved progress, AI feedback and weekend mock comparisons.</p>
+          <p>{firstName}, choose one, three or six months of access to all four learning modules, saved progress, AI feedback and weekend mock comparisons.</p>
           <div className="billing-access-chip"><BadgeCheck /><span><small>Your access</small><b>{hasAccess ? activeSubscription ? "Subscription active" : summary.activePass ? "Sponsored pass active" : "Open during launch" : "Membership needed"}</b></span></div>
         </div>
         <div className="billing-hero-art"><span><Star fill="currentColor" /><b>{summary.earnedCoins.toLocaleString()}</b><small>lifetime-earned coins</small></span><img src="/capi-plan.png" alt="Capi Coach planning a study membership" /></div>
@@ -70,7 +70,7 @@ export function BillingClient({ userName, summary, checkoutConfigured, paywallAc
 
         <section className="billing-status-grid">
           <article>
-            <span><CreditCard /></span><div><small>Current membership</small><h2>{activeSubscription ? `${summary.subscription?.planInterval === "annual" ? "Annual" : "Monthly"} plan` : "No paid plan"}</h2><p>{activeSubscription ? summary.subscription?.currentPeriodEnd ? `${summary.subscription.cancelAtPeriodEnd ? "Ends" : "Renews"} ${new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(summary.subscription.currentPeriodEnd))}` : "Active and ready" : "Choose a plan below or claim a gift pass."}</p></div>
+            <span><CreditCard /></span><div><small>Current membership</small><h2>{activeSubscription ? `${billingPlanLabel(summary.subscription?.planInterval ?? "")} plan` : "No paid plan"}</h2><p>{activeSubscription ? summary.subscription?.currentPeriodEnd ? `${summary.subscription.cancelAtPeriodEnd ? "Ends" : "Renews"} ${new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(summary.subscription.currentPeriodEnd))}` : "Active and ready" : "Choose a plan below or claim a gift pass."}</p></div>
             {summary.subscription?.hasCustomer && <button onClick={() => void openSession("/api/billing/portal")} disabled={busy !== null}>{busy === "/api/billing/portal" ? "Opening…" : <>Manage <ExternalLink /></>}</button>}
           </article>
           <article>
@@ -87,11 +87,11 @@ export function BillingClient({ userName, summary, checkoutConfigured, paywallAc
             {(Object.keys(BILLING_PLANS) as Array<keyof typeof BILLING_PLANS>).map((planId) => {
               const plan = BILLING_PLANS[planId];
               const discounted = discountedAmount(plan.amount, summary.discountPercent);
-              return <article className={planId === "annual" ? "featured" : ""} key={planId}>
-                {planId === "annual" && <span className="best-value">BEST VALUE</span>}
-                <span className="plan-icon">{planId === "annual" ? <CalendarClock /> : <CreditCard />}</span>
-                <small>{plan.label.toUpperCase()}</small><h3>{formatUsd(discounted)}<em>/{plan.interval}</em></h3>
-                {summary.discountPercent > 0 && <p className="original-price"><s>{formatUsd(plan.amount)}</s> with {summary.discountPercent}% Capi-Coin discount</p>}
+              return <article className={planId === "six_months" ? "featured" : ""} key={planId}>
+                {planId === "six_months" && <span className="best-value">BEST VALUE</span>}
+                <span className="plan-icon">{planId === "one_month" ? <CreditCard /> : <CalendarClock />}</span>
+                <small>{plan.label.toUpperCase()}</small><h3>{formatCurrency(discounted)}<em>/{plan.label}</em></h3>
+                {summary.discountPercent > 0 && <p className="original-price"><s>{formatCurrency(plan.amount)}</s> with {summary.discountPercent}% Capi-Coin discount</p>}
                 <p>{plan.description}</p>
                 <ul><li><Check /> All four IELTS modules</li><li><Check /> Speaking & Writing AI feedback</li><li><Check /> Adaptive weekly plan and reports</li><li><Check /> Weekend mock comparisons</li></ul>
                 <button disabled={!checkoutConfigured || Boolean(activeSubscription) || busy !== null} onClick={() => void openSession("/api/billing/checkout", { plan: planId })}>
@@ -110,7 +110,7 @@ export function BillingClient({ userName, summary, checkoutConfigured, paywallAc
 
           <article className="billing-history-card">
             <header><span><History /></span><div><small>ACCOUNT RECORDS</small><h2>Payment history</h2><p>Successful and failed renewals appear here after Stripe confirms them.</p></div></header>
-            {summary.payments.length ? <div className="billing-payment-list">{summary.payments.map((payment) => <div key={payment.id}><span className={payment.status}><ReceiptText /></span><div><b>{payment.planInterval === "annual" ? "Annual" : "Monthly"} membership</b><small>{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(payment.paidAt))} · {payment.discountPercent}% discount</small></div><strong>{formatUsd(payment.amountPaid)}<small>{payment.status}</small></strong></div>)}</div> : <div className="billing-empty"><ReceiptText /><b>No payments yet</b><p>Your receipt history will stay attached to this signed-in account.</p></div>}
+            {summary.payments.length ? <div className="billing-payment-list">{summary.payments.map((payment) => <div key={payment.id}><span className={payment.status}><ReceiptText /></span><div><b>{billingPlanLabel(payment.planInterval)} membership</b><small>{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(payment.paidAt))} · {payment.discountPercent}% discount</small></div><strong>{formatCurrency(payment.amountPaid, payment.currency)}<small>{payment.status}</small></strong></div>)}</div> : <div className="billing-empty"><ReceiptText /><b>No payments yet</b><p>Your receipt history will stay attached to this signed-in account.</p></div>}
           </article>
         </section>
       </div>

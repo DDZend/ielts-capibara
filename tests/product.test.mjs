@@ -328,12 +328,15 @@ test("commercial access uses server-calculated discounts and signed payment even
     read("drizzle/0004_complex_morlocks.sql"),
     read("app/billing/BillingClient.tsx"),
   ]);
-  assert.match(config, /monthly:.*amount: 1_900/);
-  assert.match(config, /annual:.*amount: 14_900/);
+  assert.match(config, /BILLING_CURRENCY = "kzt"/);
+  assert.match(config, /one_month:[\s\S]*?intervalCount: 1,[\s\S]*?amount: 6_000_000/);
+  assert.match(config, /three_months:[\s\S]*?intervalCount: 3,[\s\S]*?amount: 15_000_000/);
+  assert.match(config, /six_months:[\s\S]*?intervalCount: 6,[\s\S]*?amount: 27_000_000/);
   for (const percent of [5, 10, 15]) assert.match(config, new RegExp(`percent: ${percent}`));
   assert.match(checkout, /const summary = await getBillingSummary\(user\.email\)/);
   assert.match(checkout, /discountedAmount\(plan\.amount, summary\.discountPercent\)/);
   assert.match(checkout, /mode: "subscription"/);
+  assert.match(checkout, /interval_count: plan\.intervalCount/);
   assert.match(checkout, /subscription_data: \{ metadata \}/);
   assert.doesNotMatch(checkout, /body\.amount|body\.discount/);
   assert.match(webhook, /const rawBody = await request\.text\(\)/);
@@ -351,5 +354,7 @@ test("commercial access uses server-calculated discounts and signed payment even
   }
   assert.match(billing, /Payment history/);
   assert.match(billing, /Your sponsored passes/);
+  assert.match(billing, /choose one, three or six months/);
+  assert.match(billing, /Object\.keys\(BILLING_PLANS\)/);
   assert.match(billing, /Checkout coming soon/);
 });

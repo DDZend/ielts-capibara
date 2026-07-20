@@ -1,8 +1,30 @@
-export const BILLING_CURRENCY = "usd";
+export const BILLING_CURRENCY = "kzt";
 
 export const BILLING_PLANS = {
-  monthly: { id: "monthly", label: "Monthly", interval: "month", amount: 1_900, description: "Flexible access, billed every month." },
-  annual: { id: "annual", label: "Annual", interval: "year", amount: 14_900, description: "A full year of IELTS preparation at the best base price." },
+  one_month: {
+    id: "one_month",
+    label: "1 month",
+    interval: "month",
+    intervalCount: 1,
+    amount: 6_000_000,
+    description: "Full IELTS Mastery access for one focused month.",
+  },
+  three_months: {
+    id: "three_months",
+    label: "3 months",
+    interval: "month",
+    intervalCount: 3,
+    amount: 15_000_000,
+    description: "Three months of access with ₸30,000 built-in savings.",
+  },
+  six_months: {
+    id: "six_months",
+    label: "6 months",
+    interval: "month",
+    intervalCount: 6,
+    amount: 27_000_000,
+    description: "Six months of access with ₸90,000 built-in savings.",
+  },
 } as const;
 
 export type BillingPlanId = keyof typeof BILLING_PLANS;
@@ -14,7 +36,7 @@ export const CAPI_DISCOUNT_TIERS = [
 ] as const;
 
 export function isBillingPlanId(value: unknown): value is BillingPlanId {
-  return value === "monthly" || value === "annual";
+  return value === "one_month" || value === "three_months" || value === "six_months";
 }
 
 export function discountForCoins(coins: number) {
@@ -25,6 +47,17 @@ export function discountedAmount(amount: number, percent: number) {
   return Math.max(0, Math.round(amount * (100 - percent) / 100));
 }
 
-export function formatUsd(amount: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount / 100);
+export function billingPlanLabel(planId: string) {
+  if (planId in BILLING_PLANS) return BILLING_PLANS[planId as BillingPlanId].label;
+  if (planId === "monthly") return "Monthly";
+  if (planId === "annual") return "Annual";
+  return "Membership";
+}
+
+export function formatCurrency(amount: number, currency = BILLING_CURRENCY) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    maximumFractionDigits: currency.toLowerCase() === "kzt" ? 0 : 2,
+  }).format(amount / 100);
 }

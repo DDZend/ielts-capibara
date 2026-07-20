@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       price_data: {
         currency: BILLING_CURRENCY,
         unit_amount: unitAmount,
-        recurring: { interval: plan.interval },
+        recurring: { interval: plan.interval, interval_count: plan.intervalCount },
         product_data: { name: `IELTS Mastery ${plan.label}`, description: plan.description },
       },
     }],

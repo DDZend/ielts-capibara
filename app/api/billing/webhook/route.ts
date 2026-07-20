@@ -49,7 +49,7 @@ async function upsertCheckout(session: CheckoutObject) {
   ON CONFLICT(user_email) DO UPDATE SET stripe_customer_id = excluded.stripe_customer_id,
     stripe_subscription_id = excluded.stripe_subscription_id, plan_interval = excluded.plan_interval,
     status = excluded.status, discount_percent = excluded.discount_percent, updated_at = excluded.updated_at`)
-    .bind(email, objectId(session.customer), objectId(session.subscription), session.metadata?.plan_interval ?? "monthly", int(session.metadata?.discount_percent), now, now).run();
+    .bind(email, objectId(session.customer), objectId(session.subscription), session.metadata?.plan_interval ?? "one_month", int(session.metadata?.discount_percent), now, now).run();
 }
 
 async function upsertSubscription(subscription: SubscriptionObject, deleted = false) {
@@ -73,7 +73,7 @@ async function upsertSubscription(subscription: SubscriptionObject, deleted = fa
       email,
       customerId,
       subscriptionId,
-      subscription.metadata?.plan_interval ?? existing?.plan_interval ?? "monthly",
+      subscription.metadata?.plan_interval ?? existing?.plan_interval ?? "one_month",
       deleted ? "canceled" : subscription.status,
       int(subscription.metadata?.discount_percent) || existing?.discount_percent || 0,
       isoFromUnix(period),
@@ -98,9 +98,9 @@ async function saveInvoice(event: Stripe.Event, invoice: InvoiceObject, successf
       event.id,
       invoice.id,
       successful ? invoice.amount_paid ?? 0 : invoice.amount_due ?? 0,
-      invoice.currency ?? "usd",
+      invoice.currency ?? "kzt",
       successful ? "paid" : "failed",
-      existing?.plan_interval ?? invoice.parent?.subscription_details?.metadata?.plan_interval ?? "monthly",
+      existing?.plan_interval ?? invoice.parent?.subscription_details?.metadata?.plan_interval ?? "one_month",
       existing?.discount_percent ?? int(invoice.parent?.subscription_details?.metadata?.discount_percent),
       isoFromUnix(invoice.created) ?? new Date().toISOString(),
     ).run();
