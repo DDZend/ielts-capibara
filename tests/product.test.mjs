@@ -15,6 +15,8 @@ test("all requested routes are present", async () => {
     access(new URL("app/writing/page.tsx", root)),
     access(new URL("app/reading/page.tsx", root)),
     access(new URL("app/listening/page.tsx", root)),
+    access(new URL("app/billing/page.tsx", root)),
+    access(new URL("app/sponsored-access/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
@@ -23,6 +25,10 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/writing-feedback/route.ts", root)),
     access(new URL("app/api/capi-helper/route.ts", root)),
     access(new URL("app/api/lesson-progress/route.ts", root)),
+    access(new URL("app/api/billing/checkout/route.ts", root)),
+    access(new URL("app/api/billing/portal/route.ts", root)),
+    access(new URL("app/api/billing/webhook/route.ts", root)),
+    access(new URL("app/api/sponsored-pass/route.ts", root)),
   ]);
 });
 
@@ -32,7 +38,7 @@ test("daily study tasks and weekly mocks are owned by the signed-in student", as
     read("app/api/mock-results/route.ts"),
   ]);
   for (const source of [studyApi, mockApi]) {
-    assert.match(source, /const user = await getChatGPTUser\(\)/);
+    assert.match(source, /const access = await getApiLearningUser\(\)/);
     assert.match(source, /user\.email/);
     assert.doesNotMatch(source, /body\.userEmail|body\.userName/);
   }
@@ -45,7 +51,7 @@ test("dashboard and result APIs enforce platform identity on the server", async 
     read("app/dashboard/page.tsx"),
     read("app/api/assessment-results/route.ts"),
   ]);
-  assert.match(dashboard, /requireChatGPTUser\("\/dashboard"\)/);
+  assert.match(dashboard, /requireLearningAccess\("\/dashboard"\)/);
   assert.match(api, /const user = await getChatGPTUser\(\)/);
   assert.match(api, /eq\(assessmentResults\.userEmail, user\.email\)/);
   assert.doesNotMatch(api, /body\.userEmail|body\.userName/);
@@ -129,12 +135,13 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
 });
 
 test("Capi Helper turns donated coins into persistent one-day passes for new learners", async () => {
-  const [dashboard, styles, api, schema, migration] = await Promise.all([
+  const [dashboard, styles, api, schema, migration, commercialMigration] = await Promise.all([
     read("app/dashboard/DashboardClient.tsx"),
     read("app/globals.css"),
     read("app/api/capi-helper/route.ts"),
     read("db/schema.ts"),
     read("drizzle/0002_loose_stardust.sql"),
+    read("drizzle/0004_complex_morlocks.sql"),
   ]);
   assert.match(dashboard, /const capiHelperGiftCost = 500/);
   for (const tier of [5, 10, 15]) assert.match(dashboard, new RegExp(`percent: ${tier}`));
@@ -148,10 +155,12 @@ test("Capi Helper turns donated coins into persistent one-day passes for new lea
   assert.match(api, /const user = await getChatGPTUser\(\)/);
   assert.match(api, /const GIFT_COST = 500/);
   assert.match(api, /const ACCESS_HOURS = 24/);
-  assert.match(api, /INSERT INTO capi_helper_gifts/);
+  assert.match(api, /INSERT INTO sponsored_access_passes/);
+  assert.match(api, /claimUrl: `\/sponsored-access\?code=/);
   assert.match(api, /WHERE \(/);
   assert.doesNotMatch(api, /body\.donorEmail|body\.userEmail/);
   for (const source of [schema, migration]) assert.match(source, /capi_helper_gifts/);
+  for (const source of [schema, commercialMigration]) assert.match(source, /sponsored_access_passes/);
 });
 
 test("notification and language controls share hover feedback and Reading uses yellow", async () => {
@@ -170,13 +179,13 @@ test("speaking course is protected and links from the dashboard", async () => {
     read("app/speaking/page.tsx"),
     read("app/dashboard/DashboardClient.tsx"),
   ]);
-  assert.match(page, /requireChatGPTUser\("\/speaking"\)/);
+  assert.match(page, /requireLearningAccess\("\/speaking"\)/);
   assert.match(dashboard, /skill === "Speaking" \? "\/speaking"/);
 });
 
 test("speaking AI feedback is authenticated, bounded and saves only structured coaching data", async () => {
   const [api, schema] = await Promise.all([read("app/api/speaking-feedback/route.ts"), read("db/schema.ts")]);
-  assert.match(api, /const user = await getChatGPTUser\(\)/);
+  assert.match(api, /const access = await getApiLearningUser\(\)/);
   assert.match(api, /MAX_AUDIO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(api, /gpt-4o-transcribe/);
   assert.match(api, /gpt-5\.6-luna/);
@@ -209,7 +218,7 @@ test("writing course is protected and exposes twelve visually grouped lessons", 
     read("app/writing/WritingClient.tsx"),
     read("app/dashboard/DashboardClient.tsx"),
   ]);
-  assert.match(page, /requireChatGPTUser\("\/writing"\)/);
+  assert.match(page, /requireLearningAccess\("\/writing"\)/);
   assert.match(dashboard, /skill === "Writing" \? "\/writing"/);
   const lessonIds = ["line-graph", "bar-chart", "pie-chart", "table", "process", "maps-plans", "mixed-visuals", "opinion", "discussion", "advantages", "problem-solution", "two-part"];
   for (const id of lessonIds) assert.match(client, new RegExp(`id: "${id}"`));
@@ -223,7 +232,7 @@ test("writing feedback saves scores and coaching without retaining the essay", a
     read("app/writing/WritingClient.tsx"),
     read("db/schema.ts"),
   ]);
-  assert.match(api, /const user = await getChatGPTUser\(\)/);
+  assert.match(api, /const access = await getApiLearningUser\(\)/);
   assert.match(api, /MAX_ESSAY_CHARACTERS = 20_000/);
   assert.match(api, /gpt-5\.6-luna/);
   assert.match(api, /json_schema/);
@@ -240,7 +249,7 @@ test("reading course is protected and covers all official task types", async () 
     read("app/reading/ReadingClient.tsx"),
     read("app/dashboard/DashboardClient.tsx"),
   ]);
-  assert.match(page, /requireChatGPTUser\("\/reading"\)/);
+  assert.match(page, /requireLearningAccess\("\/reading"\)/);
   assert.match(dashboard, /skill === "Reading" \? "\/reading"/);
   assert.match(dashboard, /14 strategy lessons/);
   const lessonIds = ["multiple-choice", "true-false-ng", "yes-no-ng", "matching-information", "matching-headings", "matching-features", "matching-endings", "sentence-completion", "summary-completion", "note-completion", "table-completion", "flow-chart-completion", "diagram-labelling", "short-answer"];
@@ -265,7 +274,7 @@ test("listening course is protected and exposes twelve lessons across four parts
     read("app/listening/ListeningClient.tsx"),
     read("app/dashboard/DashboardClient.tsx"),
   ]);
-  assert.match(page, /requireChatGPTUser\("\/listening"\)/);
+  assert.match(page, /requireLearningAccess\("\/listening"\)/);
   assert.match(dashboard, /"\/listening"/);
   assert.match(dashboard, /12 audio lessons/);
   const lessonIds = ["form-completion", "spelling-numbers", "conversation-multiple-choice", "map-labelling", "matching-features", "short-answer", "matching-speakers", "attitude-multiple-choice", "sentence-completion", "lecture-notes", "table-flowchart", "summary-completion"];
@@ -292,7 +301,7 @@ test("lesson progress is user-owned and the dashboard adapts the connected journ
     read("app/dashboard/DashboardClient.tsx"),
     read("drizzle/0003_round_mister_fear.sql"),
   ]);
-  assert.match(api, /const user = await getChatGPTUser\(\)/);
+  assert.match(api, /const access = await getApiLearningUser\(\)/);
   assert.match(api, /eq\(lessonProgress\.userEmail, user\.email\)/);
   assert.doesNotMatch(api, /body\.userEmail|body\.email/);
   assert.match(api, /onConflictDoUpdate/);
@@ -305,4 +314,42 @@ test("lesson progress is user-owned and the dashboard adapts the connected journ
   assert.match(migration, /CREATE TABLE `lesson_progress`/);
   assert.match(migration, /lesson_progress_user_module_lesson_uidx/);
   assert.match(migration, /CREATE TABLE `ai_practice_assessments`/);
+});
+
+test("commercial access uses server-calculated discounts and signed payment events", async () => {
+  const [config, checkout, webhook, portal, claim, access, schema, migration, billing] = await Promise.all([
+    read("lib/billing-config.ts"),
+    read("app/api/billing/checkout/route.ts"),
+    read("app/api/billing/webhook/route.ts"),
+    read("app/api/billing/portal/route.ts"),
+    read("app/api/sponsored-pass/route.ts"),
+    read("app/learning-access.ts"),
+    read("db/schema.ts"),
+    read("drizzle/0004_complex_morlocks.sql"),
+    read("app/billing/BillingClient.tsx"),
+  ]);
+  assert.match(config, /monthly:.*amount: 1_900/);
+  assert.match(config, /annual:.*amount: 14_900/);
+  for (const percent of [5, 10, 15]) assert.match(config, new RegExp(`percent: ${percent}`));
+  assert.match(checkout, /const summary = await getBillingSummary\(user\.email\)/);
+  assert.match(checkout, /discountedAmount\(plan\.amount, summary\.discountPercent\)/);
+  assert.match(checkout, /mode: "subscription"/);
+  assert.match(checkout, /subscription_data: \{ metadata \}/);
+  assert.doesNotMatch(checkout, /body\.amount|body\.discount/);
+  assert.match(webhook, /const rawBody = await request\.text\(\)/);
+  assert.match(webhook, /constructEventAsync\(rawBody, signature, webhookSecret\)/);
+  assert.match(webhook, /ON CONFLICT\(stripe_event_id\) DO NOTHING/);
+  assert.match(portal, /stripe\.billingPortal\.sessions\.create/);
+  assert.match(claim, /WHERE pass_code = \? AND status = 'available' AND recipient_email IS NULL/);
+  assert.match(claim, /pass\.donor_email === user\.email/);
+  assert.match(access, /PAYWALL_ENABLED/);
+  assert.match(access, /hasLearningAccess\(email\)/);
+  for (const source of [schema, migration]) {
+    assert.match(source, /subscriptions/);
+    assert.match(source, /payment_history/);
+    assert.match(source, /sponsored_access_passes/);
+  }
+  assert.match(billing, /Payment history/);
+  assert.match(billing, /Your sponsored passes/);
+  assert.match(billing, /Checkout coming soon/);
 });

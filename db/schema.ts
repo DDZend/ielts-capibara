@@ -148,3 +148,69 @@ export const aiPracticeAssessments = sqliteTable(
 
 export type LessonProgress = typeof lessonProgress.$inferSelect;
 export type AiPracticeAssessment = typeof aiPracticeAssessments.$inferSelect;
+
+export const subscriptions = sqliteTable(
+  "subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    planInterval: text("plan_interval").notNull(),
+    status: text("status").notNull(),
+    discountPercent: integer("discount_percent").notNull().default(0),
+    currentPeriodEnd: text("current_period_end"),
+    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("subscriptions_user_email_uidx").on(table.userEmail),
+    uniqueIndex("subscriptions_stripe_subscription_uidx").on(table.stripeSubscriptionId),
+  ],
+);
+
+export const paymentHistory = sqliteTable(
+  "payment_history",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    stripeEventId: text("stripe_event_id").notNull(),
+    stripeInvoiceId: text("stripe_invoice_id"),
+    amountPaid: integer("amount_paid").notNull(),
+    currency: text("currency").notNull(),
+    status: text("status").notNull(),
+    planInterval: text("plan_interval").notNull(),
+    discountPercent: integer("discount_percent").notNull().default(0),
+    paidAt: text("paid_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("payment_history_stripe_event_uidx").on(table.stripeEventId),
+    index("payment_history_user_paid_at_idx").on(table.userEmail, table.paidAt),
+  ],
+);
+
+export const sponsoredAccessPasses = sqliteTable(
+  "sponsored_access_passes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    donorEmail: text("donor_email").notNull(),
+    passCode: text("pass_code").notNull(),
+    coins: integer("coins").notNull(),
+    accessHours: integer("access_hours").notNull(),
+    recipientEmail: text("recipient_email"),
+    status: text("status").notNull(),
+    createdAt: text("created_at").notNull(),
+    claimedAt: text("claimed_at"),
+    expiresAt: text("expires_at"),
+  },
+  (table) => [
+    uniqueIndex("sponsored_access_passes_code_uidx").on(table.passCode),
+    index("sponsored_access_passes_donor_created_at_idx").on(table.donorEmail, table.createdAt),
+    index("sponsored_access_passes_recipient_expires_at_idx").on(table.recipientEmail, table.expiresAt),
+  ],
+);
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type PaymentHistory = typeof paymentHistory.$inferSelect;
+export type SponsoredAccessPass = typeof sponsoredAccessPasses.$inferSelect;

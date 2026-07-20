@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
-import { getChatGPTUser } from "../../chatgpt-auth";
+import { getApiLearningUser } from "../../learning-access";
 import { ensureAppSchema, getDb } from "../../../db";
 import { mockResults } from "../../../db/schema";
 import { isMockPayload } from "../../../lib/mock";
@@ -26,8 +26,9 @@ const safeMock = (row: typeof mockResults.$inferSelect) => ({
 });
 
 export async function GET() {
-  const user = await getChatGPTUser();
-  if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const access = await getApiLearningUser();
+  if (!access.user) return NextResponse.json({ error: access.status === 401 ? "Authentication required" : "Active learning access required" }, { status: access.status });
+  const user = access.user;
   await ensureAppSchema();
   const results = await getDb().select().from(mockResults)
     .where(eq(mockResults.userEmail, user.email))
@@ -36,8 +37,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getChatGPTUser();
-  if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const access = await getApiLearningUser();
+  if (!access.user) return NextResponse.json({ error: access.status === 401 ? "Authentication required" : "Active learning access required" }, { status: access.status });
+  const user = access.user;
   const body: unknown = await request.json().catch(() => null);
   if (!isMockPayload(body) || body.readingCorrect < 0 || body.readingCorrect > 5 || body.listeningCorrect < 0 || body.listeningCorrect > 5 || body.writingWords < 80 || body.speakingConfidence < 1 || body.speakingConfidence > 5) {
     return NextResponse.json({ error: "Invalid mock result" }, { status: 400 });

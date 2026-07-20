@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { getChatGPTUser } from "../../chatgpt-auth";
+import { getApiLearningUser } from "../../learning-access";
 import { ensureAppSchema, getDb } from "../../../db";
 import { lessonProgress } from "../../../db/schema";
 
@@ -22,8 +22,9 @@ function isProgressPayload(value: unknown): value is ProgressPayload {
 }
 
 export async function GET(request: NextRequest) {
-  const user = await getChatGPTUser();
-  if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const access = await getApiLearningUser();
+  if (!access.user) return NextResponse.json({ error: access.status === 401 ? "Authentication required" : "Active learning access required" }, { status: access.status });
+  const user = access.user;
   const moduleName = request.nextUrl.searchParams.get("module");
   if (moduleName && !MODULES.has(moduleName)) return NextResponse.json({ error: "Invalid module" }, { status: 400 });
   await ensureAppSchema();
@@ -35,8 +36,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const user = await getChatGPTUser();
-  if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const access = await getApiLearningUser();
+  if (!access.user) return NextResponse.json({ error: access.status === 401 ? "Authentication required" : "Active learning access required" }, { status: access.status });
+  const user = access.user;
   const body: unknown = await request.json().catch(() => null);
   if (!isProgressPayload(body)) return NextResponse.json({ error: "Invalid lesson result" }, { status: 400 });
   await ensureAppSchema();

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireChatGPTUser } from "../chatgpt-auth";
+import { requireLearningAccess } from "../learning-access";
 import { getDashboardLearningData, getLatestAssessmentForEmail } from "../../db";
 import { DashboardClient } from "./DashboardClient";
 
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const user = await requireChatGPTUser("/dashboard");
+  const user = await requireLearningAccess("/dashboard");
   const row = await getLatestAssessmentForEmail(user.email);
   const latest = row ? {
     id: row.id,

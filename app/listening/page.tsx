@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireChatGPTUser } from "../chatgpt-auth";
+import { requireLearningAccess } from "../learning-access";
 import { ListeningClient } from "./ListeningClient";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +10,6 @@ export const metadata: Metadata = {
 };
 
 export default async function ListeningPage() {
-  const user = await requireChatGPTUser("/listening");
+  const user = await requireLearningAccess("/listening");
   return <ListeningClient userName={user.displayName} />;
 }

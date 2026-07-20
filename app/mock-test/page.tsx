@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireChatGPTUser } from "../chatgpt-auth";
+import { requireLearningAccess } from "../learning-access";
 import { getMockResultsForEmail } from "../../db";
 import type { SavedMock } from "../../lib/mock";
 import { MockTestClient } from "./MockTestClient";
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MockTestPage() {
-  const user = await requireChatGPTUser("/mock-test");
+  const user = await requireLearningAccess("/mock-test");
   const rows = await getMockResultsForEmail(user.email, 2);
   const mocks: SavedMock[] = rows.map((row) => ({
     id: row.id,

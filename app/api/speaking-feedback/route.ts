@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { NextRequest, NextResponse } from "next/server";
-import { getChatGPTUser } from "../../chatgpt-auth";
+import { getApiLearningUser } from "../../learning-access";
 import { saveAiPracticeAssessment } from "../../../db";
 
 export const dynamic = "force-dynamic";
@@ -61,8 +61,9 @@ function outputText(payload: OpenAIOutput): string | null {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getChatGPTUser();
-  if (!user) return json({ error: "Authentication required" }, 401);
+  const access = await getApiLearningUser();
+  if (!access.user) return json({ error: access.status === 401 ? "Authentication required" : "Active learning access required" }, access.status);
+  const user = access.user;
 
   const declaredSize = Number(request.headers.get("content-length") ?? 0);
   if (Number.isFinite(declaredSize) && declaredSize > MAX_REQUEST_BYTES) {

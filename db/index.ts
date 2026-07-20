@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { and, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import * as schema from "./schema";
 import type { Skill } from "../lib/assessment";
+import { discountForCoins } from "../lib/billing-config";
 import { createDailyPlan, isoDate, weekEnd, weekStart } from "../lib/study-plan";
 
 export function getDb() {
@@ -146,6 +147,50 @@ export function ensureAppSchema() {
       getD1().prepare(
         "CREATE INDEX IF NOT EXISTS ai_practice_assessments_user_skill_created_at_idx ON ai_practice_assessments (user_email, skill, created_at)",
       ),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        stripe_customer_id TEXT,
+        stripe_subscription_id TEXT,
+        plan_interval TEXT NOT NULL,
+        status TEXT NOT NULL,
+        discount_percent INTEGER NOT NULL DEFAULT 0,
+        current_period_end TEXT,
+        cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_user_email_uidx ON subscriptions (user_email)"),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_stripe_subscription_uidx ON subscriptions (stripe_subscription_id)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS payment_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        stripe_event_id TEXT NOT NULL,
+        stripe_invoice_id TEXT,
+        amount_paid INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        status TEXT NOT NULL,
+        plan_interval TEXT NOT NULL,
+        discount_percent INTEGER NOT NULL DEFAULT 0,
+        paid_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS payment_history_stripe_event_uidx ON payment_history (stripe_event_id)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS payment_history_user_paid_at_idx ON payment_history (user_email, paid_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS sponsored_access_passes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        donor_email TEXT NOT NULL,
+        pass_code TEXT NOT NULL,
+        coins INTEGER NOT NULL,
+        access_hours INTEGER NOT NULL,
+        recipient_email TEXT,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        claimed_at TEXT,
+        expires_at TEXT
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS sponsored_access_passes_code_uidx ON sponsored_access_passes (pass_code)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS sponsored_access_passes_donor_created_at_idx ON sponsored_access_passes (donor_email, created_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS sponsored_access_passes_recipient_expires_at_idx ON sponsored_access_passes (recipient_email, expires_at)"),
     ])
     .then(() => undefined);
   return schemaReady;
@@ -270,7 +315,7 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
 
   const sixtyDaysAgo = new Date(now);
   sixtyDaysAgo.setUTCDate(sixtyDaysAgo.getUTCDate() - 60);
-  const [tasks, completed, recent, mocks, earned, gifts] = await Promise.all([
+  const [tasks, completed, recent, mocks, earned, gifts, sponsored] = await Promise.all([
     getDb().select().from(schema.studyTasks)
       .where(and(eq(schema.studyTasks.userEmail, email), eq(schema.studyTasks.taskDate, today)))
       .orderBy(schema.studyTasks.id),
@@ -288,6 +333,8 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
       .where(and(eq(schema.studyTasks.userEmail, email), isNotNull(schema.studyTasks.completedAt))),
     getDb().select({ coins: schema.capiHelperGifts.coins }).from(schema.capiHelperGifts)
       .where(eq(schema.capiHelperGifts.donorEmail, email)),
+    getDb().select({ coins: schema.sponsoredAccessPasses.coins }).from(schema.sponsoredAccessPasses)
+      .where(eq(schema.sponsoredAccessPasses.donorEmail, email)),
   ]);
 
   const completedDates = new Set(completed.map((row) => row.taskDate));
@@ -300,7 +347,7 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
   const earnedPoints = earned.length * 40;
-  const giftedPoints = gifts.reduce((total, gift) => total + gift.coins, 0);
+  const giftedPoints = [...gifts, ...sponsored].reduce((total, gift) => total + gift.coins, 0);
   const lessonTotals: Record<Skill, number> = { Speaking: 3, Writing: 12, Reading: 14, Listening: 12 };
   const moduleProgress = skills.map((skill) => {
     const rows = progressRows.filter((row) => row.module === skill);
@@ -346,11 +393,162 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
     stats: {
       points: Math.max(0, earnedPoints - giftedPoints),
       earnedPoints,
-      sponsoredPasses: gifts.length,
+      sponsoredPasses: gifts.length + sponsored.length,
       streak,
       completedDaysThisWeek: thisWeekDates.size,
       completedTasksToday: tasks.filter((task) => task.completedAt).length,
       totalMinutesToday: tasks.reduce((total, task) => total + task.minutes, 0),
     },
+  };
+}
+
+export type BillingSummary = {
+  earnedCoins: number;
+  availableCoins: number;
+  discountPercent: number;
+  subscription: {
+    planInterval: string;
+    status: string;
+    discountPercent: number;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+    hasCustomer: boolean;
+  } | null;
+  activePass: { expiresAt: string; accessHours: number } | null;
+  sponsoredPasses: Array<{
+    id: number;
+    passCode: string;
+    coins: number;
+    accessHours: number;
+    recipientEmail: string | null;
+    status: string;
+    createdAt: string;
+    claimedAt: string | null;
+    expiresAt: string | null;
+  }>;
+  payments: Array<{
+    id: number;
+    amountPaid: number;
+    currency: string;
+    status: string;
+    planInterval: string;
+    discountPercent: number;
+    paidAt: string;
+  }>;
+};
+
+type SubscriptionRow = {
+  plan_interval: string;
+  status: string;
+  discount_percent: number;
+  current_period_end: string | null;
+  cancel_at_period_end: number;
+  stripe_customer_id: string | null;
+};
+
+type SponsoredPassRow = {
+  id: number;
+  pass_code: string;
+  coins: number;
+  access_hours: number;
+  recipient_email: string | null;
+  status: string;
+  created_at: string;
+  claimed_at: string | null;
+  expires_at: string | null;
+};
+
+type PaymentRow = {
+  id: number;
+  amount_paid: number;
+  currency: string;
+  status: string;
+  plan_interval: string;
+  discount_percent: number;
+  paid_at: string;
+};
+
+export async function getBillingSummary(email: string): Promise<BillingSummary> {
+  await ensureAppSchema();
+  const now = new Date().toISOString();
+  await getD1().prepare(`
+    UPDATE sponsored_access_passes
+    SET status = 'expired'
+    WHERE recipient_email = ? AND status = 'claimed' AND expires_at IS NOT NULL AND expires_at <= ?
+  `).bind(email, now).run();
+
+  const [subscription, activePass, sponsoredResult, paymentsResult, coinResult] = await Promise.all([
+    getD1().prepare(`SELECT plan_interval, status, discount_percent, current_period_end, cancel_at_period_end, stripe_customer_id FROM subscriptions WHERE user_email = ? LIMIT 1`).bind(email).first<SubscriptionRow>(),
+    getD1().prepare(`SELECT access_hours, expires_at FROM sponsored_access_passes WHERE recipient_email = ? AND status = 'claimed' AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`).bind(email, now).first<{ access_hours: number; expires_at: string }>(),
+    getD1().prepare(`SELECT id, pass_code, coins, access_hours, recipient_email, status, created_at, claimed_at, expires_at FROM sponsored_access_passes WHERE donor_email = ? ORDER BY created_at DESC LIMIT 25`).bind(email).all<SponsoredPassRow>(),
+    getD1().prepare(`SELECT id, amount_paid, currency, status, plan_interval, discount_percent, paid_at FROM payment_history WHERE user_email = ? ORDER BY paid_at DESC LIMIT 50`).bind(email).all<PaymentRow>(),
+    getD1().prepare(`SELECT
+      (SELECT COUNT(*) * 40 FROM study_tasks WHERE user_email = ? AND completed_at IS NOT NULL) AS earned,
+      COALESCE((SELECT SUM(coins) FROM capi_helper_gifts WHERE donor_email = ?), 0)
+        + COALESCE((SELECT SUM(coins) FROM sponsored_access_passes WHERE donor_email = ?), 0) AS gifted
+    `).bind(email, email, email).first<{ earned: number; gifted: number }>(),
+  ]);
+
+  const earnedCoins = Number(coinResult?.earned ?? 0);
+  const giftedCoins = Number(coinResult?.gifted ?? 0);
+  return {
+    earnedCoins,
+    availableCoins: Math.max(0, earnedCoins - giftedCoins),
+    discountPercent: discountForCoins(earnedCoins),
+    subscription: subscription ? {
+      planInterval: subscription.plan_interval,
+      status: subscription.status,
+      discountPercent: subscription.discount_percent,
+      currentPeriodEnd: subscription.current_period_end,
+      cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+      hasCustomer: Boolean(subscription.stripe_customer_id),
+    } : null,
+    activePass: activePass ? { expiresAt: activePass.expires_at, accessHours: activePass.access_hours } : null,
+    sponsoredPasses: (sponsoredResult.results ?? []).map((pass) => ({
+      id: pass.id,
+      passCode: pass.pass_code,
+      coins: pass.coins,
+      accessHours: pass.access_hours,
+      recipientEmail: pass.recipient_email,
+      status: pass.status,
+      createdAt: pass.created_at,
+      claimedAt: pass.claimed_at,
+      expiresAt: pass.expires_at,
+    })),
+    payments: (paymentsResult.results ?? []).map((payment) => ({
+      id: payment.id,
+      amountPaid: payment.amount_paid,
+      currency: payment.currency,
+      status: payment.status,
+      planInterval: payment.plan_interval,
+      discountPercent: payment.discount_percent,
+      paidAt: payment.paid_at,
+    })),
+  };
+}
+
+export async function hasLearningAccess(email: string) {
+  await ensureAppSchema();
+  const now = new Date().toISOString();
+  const result = await getD1().prepare(`SELECT 1 AS allowed WHERE EXISTS (
+    SELECT 1 FROM subscriptions WHERE user_email = ? AND status IN ('active', 'trialing')
+  ) OR EXISTS (
+    SELECT 1 FROM sponsored_access_passes WHERE recipient_email = ? AND status = 'claimed' AND expires_at > ?
+  ) LIMIT 1`).bind(email, email, now).first<{ allowed: number }>();
+  return Boolean(result?.allowed);
+}
+
+export async function getSponsoredPassByCode(code: string) {
+  await ensureAppSchema();
+  const pass = await getD1().prepare(`SELECT pass_code, access_hours, status, claimed_at, expires_at FROM sponsored_access_passes WHERE pass_code = ? LIMIT 1`)
+    .bind(code).first<{ pass_code: string; access_hours: number; status: string; claimed_at: string | null; expires_at: string | null }>();
+  if (!pass) return null;
+  const expired = Boolean(pass.expires_at && pass.expires_at <= new Date().toISOString());
+  return {
+    passCode: pass.pass_code,
+    accessHours: pass.access_hours,
+    status: expired ? "expired" : pass.status,
+    claimedAt: pass.claimed_at,
+    expiresAt: pass.expires_at,
   };
 }

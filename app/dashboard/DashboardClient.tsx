@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  CreditCard,
   Flame,
   Gift,
   Headphones,
@@ -121,6 +122,8 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
   const [chatInput, setChatInput] = useState("");
   const [giftState, setGiftState] = useState<"idle" | "confirming" | "sending" | "sent" | "error">("idle");
   const [giftError, setGiftError] = useState("");
+  const [giftLink, setGiftLink] = useState("");
+  const [giftCopied, setGiftCopied] = useState(false);
   const [sessionGifts, setSessionGifts] = useState(0);
   const [reportShared, setReportShared] = useState(false);
   const [messages, setMessages] = useState<{ role: "capi" | "student"; text: string }[]>([
@@ -188,14 +191,22 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
     setGiftState("sending");
     setGiftError("");
     const response = await fetch("/api/capi-helper", { method: "POST" }).catch(() => null);
-    const payload = response ? await response.json().catch(() => null) as { error?: string } | null : null;
+    const payload = response ? await response.json().catch(() => null) as { error?: string; claimUrl?: string } | null : null;
     if (!response?.ok) {
       setGiftError(payload?.error ?? "The gift could not be completed. Please try again.");
       setGiftState("error");
       return;
     }
+    setGiftLink(payload?.claimUrl ?? "");
     setSessionGifts((current) => current + 1);
     setGiftState("sent");
+  };
+
+  const copyGiftLink = async () => {
+    if (!giftLink) return;
+    await navigator.clipboard.writeText(`${window.location.origin}${giftLink}`).catch(() => undefined);
+    setGiftCopied(true);
+    window.setTimeout(() => setGiftCopied(false), 1800);
   };
 
   const shareWeeklyReport = async () => {
@@ -220,6 +231,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
           <a className="nav-item" href="#progress" onClick={() => setSidebarOpen(false)}><span><BarChart3 /></span>My progress</a>
           <a className="nav-item" href="#live-class" onClick={() => setSidebarOpen(false)}><span><Video /></span>Live classes<span className="nav-badge">2</span></a>
           <a className="nav-item" href="#study-calendar" onClick={() => setSidebarOpen(false)}><span><CalendarDays /></span>Study calendar</a>
+          <Link className="nav-item" href="/billing" onClick={() => setSidebarOpen(false)}><span><CreditCard /></span>Membership & billing<ChevronRight /></Link>
           <div className="nav-line" />
           <button className="nav-item" onClick={() => { setTargetOpen(true); setSidebarOpen(false); document.getElementById("dashboard-top")?.scrollIntoView(); }}><span><Settings /></span>Target settings</button>
         </nav>
@@ -263,7 +275,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
                         <div><button type="button" className="gift-cancel" onClick={() => setGiftState("idle")}>Not now</button><button type="button" onClick={() => void sponsorLearner()}>Give 500 coins <Gift /></button></div>
                       </div>
                     ) : giftState === "sent" ? (
-                      <div className="capi-helper-success"><Check /><span><b>Study day sponsored!</b><small>A 24-hour pass is ready for a new learner.</small></span><button type="button" onClick={() => setGiftState("idle")}>Done</button></div>
+                      <div className="capi-helper-success"><Check /><span><b>Study day sponsored!</b><small>Send this private link to one new learner.</small></span><button type="button" onClick={() => void copyGiftLink()}>{giftCopied ? "Copied" : "Copy link"}</button></div>
                     ) : (
                       <div className="capi-helper-action">
                         <button type="button" disabled={!canSponsorLearner || giftState === "sending"} onClick={() => setGiftState("confirming")}>
@@ -301,7 +313,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
 
                   <div className="coins-popover-foot">
                     <span><Gift /> Earn 40 coins for every completed lesson.</span>
-                    <Link href="#today-plan" onClick={() => setCoinsOpen(false)}>View plan <ArrowRight /></Link>
+                    <Link href="/billing" onClick={() => setCoinsOpen(false)}>Membership & discounts <ArrowRight /></Link>
                   </div>
                 </div>
               )}
@@ -311,7 +323,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
             <label className="language-control dashboard-language interactive-control" title="Language"><Languages /><span>{language === "eng" ? "Eng" : language === "rus" ? "Рус" : "Қаз"}</span><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value as "eng" | "rus" | "kaz")}><option value="eng">Eng</option><option value="rus">Рус</option><option value="kaz">Қаз</option></select><ChevronDown /></label>
             <div className="topbar-control-wrap profile-control">
               <button className="profile-chip interactive-control" aria-label={`Open profile menu for ${userName}`} aria-haspopup="dialog" aria-expanded={profileOpen} aria-controls="profile-panel" onClick={() => { setProfileOpen((open) => !open); setCoinsOpen(false); }}><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>Target band {targetBand.toFixed(1)}</small></span><ChevronDown className="profile-chevron" /></button>
-              {profileOpen && <div className="topbar-popover profile-popover" id="profile-panel" role="dialog" aria-label="Profile menu"><div className="profile-popover-head"><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>IELTS learner · Target {targetBand.toFixed(1)}</small></span></div><div className="profile-popover-actions"><Link href="/assessment"><BarChart3 /> Update assessment <ChevronRight /></Link><button onClick={() => { setProfileOpen(false); setTargetOpen(true); document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth" }); }}><Target /> Target settings <ChevronRight /></button><a href="/signout-with-chatgpt?return_to=%2F"><LogOut /> Sign out <ChevronRight /></a></div></div>}
+              {profileOpen && <div className="topbar-popover profile-popover" id="profile-panel" role="dialog" aria-label="Profile menu"><div className="profile-popover-head"><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>IELTS learner · Target {targetBand.toFixed(1)}</small></span></div><div className="profile-popover-actions"><Link href="/assessment"><BarChart3 /> Update assessment <ChevronRight /></Link><Link href="/billing"><CreditCard /> Membership & billing <ChevronRight /></Link><button onClick={() => { setProfileOpen(false); setTargetOpen(true); document.getElementById("dashboard-top")?.scrollIntoView({ behavior: "smooth" }); }}><Target /> Target settings <ChevronRight /></button><a href="/signout-with-chatgpt?return_to=%2F"><LogOut /> Sign out <ChevronRight /></a></div></div>}
             </div>
           </div>
         </header>
