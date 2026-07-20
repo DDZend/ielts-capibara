@@ -22,6 +22,7 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/speaking-feedback/route.ts", root)),
     access(new URL("app/api/writing-feedback/route.ts", root)),
     access(new URL("app/api/capi-helper/route.ts", root)),
+    access(new URL("app/api/lesson-progress/route.ts", root)),
   ]);
 });
 
@@ -173,14 +174,17 @@ test("speaking course is protected and links from the dashboard", async () => {
   assert.match(dashboard, /skill === "Speaking" \? "\/speaking"/);
 });
 
-test("speaking AI feedback is authenticated, bounded and never persisted", async () => {
-  const api = await read("app/api/speaking-feedback/route.ts");
+test("speaking AI feedback is authenticated, bounded and saves only structured coaching data", async () => {
+  const [api, schema] = await Promise.all([read("app/api/speaking-feedback/route.ts"), read("db/schema.ts")]);
   assert.match(api, /const user = await getChatGPTUser\(\)/);
   assert.match(api, /MAX_AUDIO_BYTES = 8 \* 1024 \* 1024/);
   assert.match(api, /gpt-4o-transcribe/);
   assert.match(api, /gpt-5\.6-luna/);
   assert.match(api, /json_schema/);
-  assert.doesNotMatch(api, /getDb|ensureAppSchema|\.insert\(|\.put\(/);
+  assert.match(api, /saveAiPracticeAssessment/);
+  assert.match(api, /Audio and transcript remain temporary/);
+  assert.match(schema, /aiPracticeAssessments/);
+  assert.doesNotMatch(schema, /audio_blob|transcript|essay_text/);
 });
 
 test("speaking recorder uses temporary browser audio and sends it only for feedback", async () => {
@@ -213,16 +217,19 @@ test("writing course is protected and exposes twelve visually grouped lessons", 
   assert.match(client, /Five common ways the essay question can be framed/);
 });
 
-test("writing feedback is authenticated, bounded and never persisted", async () => {
-  const [api, client] = await Promise.all([
+test("writing feedback saves scores and coaching without retaining the essay", async () => {
+  const [api, client, schema] = await Promise.all([
     read("app/api/writing-feedback/route.ts"),
     read("app/writing/WritingClient.tsx"),
+    read("db/schema.ts"),
   ]);
   assert.match(api, /const user = await getChatGPTUser\(\)/);
   assert.match(api, /MAX_ESSAY_CHARACTERS = 20_000/);
   assert.match(api, /gpt-5\.6-luna/);
   assert.match(api, /json_schema/);
-  assert.doesNotMatch(api, /getDb|ensureAppSchema|\.insert\(|\.put\(/);
+  assert.match(api, /saveAiPracticeAssessment/);
+  assert.match(api, /essay itself is not stored/);
+  assert.doesNotMatch(schema, /essay_text|essayText|audio_blob|transcript/);
   assert.match(client, /fetch\("\/api\/writing-feedback"/);
   assert.doesNotMatch(client, /localStorage|sessionStorage/);
 });
@@ -241,13 +248,14 @@ test("reading course is protected and covers all official task types", async () 
   assert.match(client, /Reserved for your original video/);
 });
 
-test("reading practice credits authentic sources and stays temporary", async () => {
+test("reading practice credits authentic sources and saves exercise results", async () => {
   const client = await read("app/reading/ReadingClient.tsx");
   for (const source of ["science.nasa.gov", "oceanservice.noaa.gov", "usgs.gov", "nps.gov", "epa.gov", "nih.gov", "energy.gov", "usda.gov"]) {
     assert.match(client, new RegExp(source.replaceAll(".", "\\.")));
   }
   assert.match(client, /Original adaptation, authentic source/);
   assert.match(client, /It is not an official IELTS passage/);
+  assert.match(client, /saveLessonProgress\(\{ module: "Reading"/);
   assert.doesNotMatch(client, /localStorage|sessionStorage/);
 });
 
@@ -265,13 +273,36 @@ test("listening course is protected and exposes twelve lessons across four parts
   for (const part of ["part1", "part2", "part3", "part4"]) assert.match(client, new RegExp(`id: "${part}"`));
 });
 
-test("listening practice is transparent, interactive and temporary", async () => {
+test("listening practice is transparent, interactive and saves exercise results", async () => {
   const client = await read("app/listening/ListeningClient.tsx");
   assert.match(client, /temporary device-voice demo/);
   assert.match(client, /window\.speechSynthesis/);
   assert.match(client, /ONE PLAY ONLY/);
   assert.match(client, /Reveal transcript and replay evidence/);
   assert.match(client, /Facts adapted from/);
+  assert.match(client, /saveLessonProgress\(\{ module: "Listening"/);
   assert.doesNotMatch(client, /localStorage|sessionStorage/);
   assert.doesNotMatch(client, /ielts\.org\/.*\.(mp3|wav)/i);
+});
+
+test("lesson progress is user-owned and the dashboard adapts the connected journey", async () => {
+  const [api, db, dashboard, migration] = await Promise.all([
+    read("app/api/lesson-progress/route.ts"),
+    read("db/index.ts"),
+    read("app/dashboard/DashboardClient.tsx"),
+    read("drizzle/0003_round_mister_fear.sql"),
+  ]);
+  assert.match(api, /const user = await getChatGPTUser\(\)/);
+  assert.match(api, /eq\(lessonProgress\.userEmail, user\.email\)/);
+  assert.doesNotMatch(api, /body\.userEmail|body\.email/);
+  assert.match(api, /onConflictDoUpdate/);
+  assert.match(db, /const adaptivePriority = adaptiveScores/);
+  assert.match(db, /createDailyPlan\(adaptivePriority/);
+  assert.match(dashboard, /Connected learning journey/);
+  assert.match(dashboard, /AI band history/);
+  assert.match(dashboard, /Weekly progress report/);
+  assert.match(dashboard, /shareWeeklyReport/);
+  assert.match(migration, /CREATE TABLE `lesson_progress`/);
+  assert.match(migration, /lesson_progress_user_module_lesson_uidx/);
+  assert.match(migration, /CREATE TABLE `ai_practice_assessments`/);
 });

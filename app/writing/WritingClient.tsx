@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
 import {
   ArrowLeft,
   ArrowRight,
@@ -187,6 +188,7 @@ export function WritingClient({ userName }: { userName: string }) {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [feedbackState, setFeedbackState] = useState<"idle" | "loading" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [completed, setCompleted] = useState<LessonId[]>([]);
 
   const lesson = lessons.find((item) => item.id === activeId) ?? lessons[0];
   const draft = drafts[lesson.id] ?? "";
@@ -198,6 +200,10 @@ export function WritingClient({ userName }: { userName: string }) {
     const timer = window.setInterval(() => setSeconds((current) => current + 1), 1000);
     return () => window.clearInterval(timer);
   }, [timerRunning]);
+
+  useEffect(() => {
+    void loadLessonProgress("Writing").then((rows) => setCompleted(rows.map((row) => row.lessonId as LessonId)));
+  }, []);
 
   const selectLesson = (id: LessonId) => {
     setActiveId(id);
@@ -230,7 +236,17 @@ export function WritingClient({ userName }: { userName: string }) {
       return;
     }
     setFeedback(payload.feedback);
+    setCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
     setFeedbackState("idle");
+  };
+
+  const checkVocabulary = () => {
+    const choice = quizChoices[lesson.id];
+    if (!choice) return;
+    const correct = choice === lesson.vocabulary.answer;
+    setCheckedQuizzes((current) => ({ ...current, [lesson.id]: true }));
+    setCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
+    void saveLessonProgress({ module: "Writing", lessonId: lesson.id, lessonTitle: lesson.title, score: correct ? 100 : 0, correctCount: Number(correct), totalCount: 1 });
   };
 
   const togglePhrase = (phrase: string) => {
@@ -288,8 +304,8 @@ export function WritingClient({ userName }: { userName: string }) {
               {lessons.filter((item) => item.task === section.task).map((item) => {
                 const Icon = item.icon;
                 const active = item.id === lesson.id;
-                return <button key={item.id} className={`writing-lesson-card ${active ? "active" : ""}`} onClick={() => selectLesson(item.id)} aria-label={`Open ${item.title} lesson`}>
-                  <span className="writing-video-mini"><small><Video /> VIDEO {String(item.number).padStart(2, "0")}</small><Icon /><i>Coming soon</i></span>
+                return <button key={item.id} className={`writing-lesson-card ${active ? "active" : ""} ${completed.includes(item.id) ? "complete" : ""}`} onClick={() => selectLesson(item.id)} aria-label={`Open ${item.title} lesson`}>
+                  <span className="writing-video-mini"><small><Video /> VIDEO {String(item.number).padStart(2, "0")}</small><Icon /><i>Coming soon</i>{completed.includes(item.id) && <b><Check /> Practised</b>}</span>
                   <span className="writing-card-copy"><small>Task {item.task} · {item.minutes} min</small><b>{item.title}</b><p>{item.subtitle}</p></span><ChevronRight />
                 </button>;
               })}
@@ -318,7 +334,7 @@ export function WritingClient({ userName }: { userName: string }) {
               const wrong = checked && chosen && option !== lesson.vocabulary.answer;
               return <button key={option} className={`${chosen ? "chosen" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}`} onClick={() => { setQuizChoices((current) => ({ ...current, [lesson.id]: option })); setCheckedQuizzes((current) => ({ ...current, [lesson.id]: false })); }}><i>{correct ? <Check /> : String.fromCharCode(65 + index)}</i>{option}</button>;
             })}</div>
-            <footer><button className="button writing-primary" disabled={!quizChoices[lesson.id]} onClick={() => setCheckedQuizzes((current) => ({ ...current, [lesson.id]: true }))}>Check answer</button>{checkedQuizzes[lesson.id] && <p className={quizChoices[lesson.id] === lesson.vocabulary.answer ? "success" : "retry"}>{quizChoices[lesson.id] === lesson.vocabulary.answer ? <Check /> : <RotateCcw />}{quizChoices[lesson.id] === lesson.vocabulary.answer ? lesson.vocabulary.explanation : "Not quite — choose the meaning that best fits academic writing."}</p>}</footer>
+            <footer><button className="button writing-primary" disabled={!quizChoices[lesson.id]} onClick={checkVocabulary}>Check answer</button>{checkedQuizzes[lesson.id] && <p className={quizChoices[lesson.id] === lesson.vocabulary.answer ? "success" : "retry"}>{quizChoices[lesson.id] === lesson.vocabulary.answer ? <Check /> : <RotateCcw />}{quizChoices[lesson.id] === lesson.vocabulary.answer ? lesson.vocabulary.explanation : "Not quite — choose the meaning that best fits academic writing."}</p>}</footer>
           </article>
 
           <article className="writing-task-card writing-structure">
@@ -344,7 +360,7 @@ export function WritingClient({ userName }: { userName: string }) {
             <div className="writing-count-row"><span className={wordCount >= lesson.minimumWords ? "complete" : ""}><b>{wordCount}</b> / {lesson.minimumWords} words</span><small>{wordCount < 40 ? `${40 - wordCount} more words to unlock AI feedback` : wordCount < lesson.minimumWords ? "Enough for feedback — continue toward the official minimum" : "Official minimum reached"}</small></div>
 
             {feedbackState === "error" && message && <p className="writing-error" role="alert"><CircleAlert />{message}</p>}
-            <div className="writing-submit-row"><span><LockKeyhole /><small><b>Private practice</b>Your writing is assessed for this response and is not saved to your profile.</small></span><button className="button writing-primary" disabled={wordCount < 40 || feedbackState === "loading"} onClick={() => void submitWriting()}>{feedbackState === "loading" ? <><i className="writing-spinner" /> Capi is reading…</> : <>Get AI feedback <ArrowRight /></>}</button></div>
+            <div className="writing-submit-row"><span><LockKeyhole /><small><b>Private progress</b>Your band estimate and coaching points are saved. Your essay text is not stored.</small></span><button className="button writing-primary" disabled={wordCount < 40 || feedbackState === "loading"} onClick={() => void submitWriting()}>{feedbackState === "loading" ? <><i className="writing-spinner" /> Capi is reading…</> : <>Get AI feedback <ArrowRight /></>}</button></div>
 
             {feedback && <section className="writing-feedback" aria-live="polite">
               <div className="writing-feedback-hero"><span><Sparkles /> Capi&apos;s practice feedback</span><div><small>Estimated band</small><strong>{feedback.overallBand.toFixed(1)}</strong><em>Practice only</em></div><p>{feedback.summary}</p></div>

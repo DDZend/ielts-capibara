@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { NextRequest, NextResponse } from "next/server";
 import { getChatGPTUser } from "../../chatgpt-auth";
+import { saveAiPracticeAssessment } from "../../../db";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,17 @@ const feedbackSchema = {
 type OpenAIOutput = {
   output_text?: string;
   output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+};
+
+type SpeakingFeedback = {
+  overallBand: number;
+  fluency: number;
+  lexicalResource: number;
+  grammar: number;
+  pronunciation: number;
+  summary: string;
+  strengths: string[];
+  priorities: string[];
 };
 
 function json(data: unknown, status = 200) {
@@ -131,9 +143,21 @@ export async function POST(request: NextRequest) {
     const assessmentPayload = await assessmentResponse.json() as OpenAIOutput;
     const assessmentText = outputText(assessmentPayload);
     if (!assessmentText) throw new Error("Assessment returned no structured output");
-    const feedback = JSON.parse(assessmentText) as Record<string, unknown>;
+    const feedback = JSON.parse(assessmentText) as SpeakingFeedback;
 
-    // The recording and transcript are deliberately not written to D1, R2, logs or browser storage.
+    await saveAiPracticeAssessment({
+      userEmail: user.email,
+      skill: "Speaking",
+      lessonId: part,
+      lessonTitle: `Speaking ${part.replace("part", "Part ")}`,
+      overallBand: feedback.overallBand,
+      criteria: [feedback.fluency, feedback.lexicalResource, feedback.grammar, feedback.pronunciation],
+      summary: feedback.summary,
+      strengths: feedback.strengths,
+      priorities: feedback.priorities,
+    });
+
+    // Only structured scores and coaching points are retained. Audio and transcript remain temporary.
     return json({ transcript, feedback, disclaimer: "Practice estimate only — not an official IELTS band score." });
   } catch (error) {
     console.error("Speaking feedback request failed", error instanceof Error ? error.message : "Unknown error");

@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
 import {
   ArrowLeft,
   ArrowRight,
@@ -338,6 +339,9 @@ export function ListeningClient({ userName }: { userName: string }) {
   const allAnswered = lesson.questions.every((_, index) => Boolean((lessonAnswers[index] ?? "").trim()));
 
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
+  useEffect(() => {
+    void loadLessonProgress("Listening").then((rows) => setCompleted(rows.map((row) => row.lessonId as LessonId)));
+  }, []);
 
   const stopAudio = () => {
     window.speechSynthesis?.cancel();
@@ -382,7 +386,8 @@ export function ListeningClient({ userName }: { userName: string }) {
   const submit = () => {
     if (!allAnswered) return;
     setSubmitted((current) => ({ ...current, [lesson.id]: true }));
-    if (score === lesson.questions.length) setCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
+    setCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
+    void saveLessonProgress({ module: "Listening", lessonId: lesson.id, lessonTitle: lesson.title, score: score / lesson.questions.length * 100, correctCount: score, totalCount: lesson.questions.length });
   };
 
   const retry = () => {

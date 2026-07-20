@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { NextRequest, NextResponse } from "next/server";
 import { getChatGPTUser } from "../../chatgpt-auth";
+import { saveAiPracticeAssessment } from "../../../db";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,17 @@ const feedbackSchema = {
 type OpenAIOutput = {
   output_text?: string;
   output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+};
+
+type WritingFeedback = {
+  overallBand: number;
+  taskAchievement: number;
+  coherence: number;
+  lexicalResource: number;
+  grammar: number;
+  summary: string;
+  strengths: string[];
+  priorities: string[];
 };
 
 function json(data: unknown, status = 200) {
@@ -112,9 +124,22 @@ export async function POST(request: NextRequest) {
     const payload = await response.json() as OpenAIOutput;
     const text = outputText(payload);
     if (!text) throw new Error("Writing assessment returned no structured output");
-    const feedback = JSON.parse(text) as Record<string, unknown>;
+    const feedback = JSON.parse(text) as WritingFeedback;
 
-    // The student's writing is used only for this response and is not written to D1, R2 or browser storage.
+    await saveAiPracticeAssessment({
+      userEmail: user.email,
+      skill: "Writing",
+      lessonId: body.lessonId,
+      lessonTitle: `Writing ${body.lessonId.replaceAll("-", " ")}`,
+      overallBand: feedback.overallBand,
+      criteria: [feedback.taskAchievement, feedback.coherence, feedback.lexicalResource, feedback.grammar],
+      summary: feedback.summary,
+      strengths: feedback.strengths,
+      priorities: feedback.priorities,
+      wordCount,
+    });
+
+    // Only structured scores and coaching points are retained. The essay itself is not stored.
     return json({ feedback, wordCount, disclaimer: "Practice estimate only — not an official IELTS band score." });
   } catch (error) {
     console.error("Writing feedback request failed", error instanceof Error ? error.message : "Unknown error");

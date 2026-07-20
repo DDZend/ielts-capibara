@@ -2,7 +2,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
 import {
   ArrowLeft,
   ArrowRight,
@@ -352,6 +353,10 @@ export function ReadingClient({ userName }: { userName: string }) {
   const LessonIcon = lesson.icon;
   const visibleFamilies = useMemo(() => families.filter((family) => filter === "all" || family.id === filter), [filter]);
 
+  useEffect(() => {
+    void loadLessonProgress("Reading").then((rows) => setCompleted(rows.map((row) => row.lessonId as LessonId)));
+  }, []);
+
   const selectLesson = (id: LessonId) => {
     setActiveId(id);
     window.setTimeout(() => document.getElementById("reading-studio")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
@@ -360,7 +365,9 @@ export function ReadingClient({ userName }: { userName: string }) {
   const checkAnswer = () => {
     if (!selected) return;
     setChecked((current) => ({ ...current, [lesson.id]: true }));
-    if (selected === lesson.answer) setCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
+    const correct = selected === lesson.answer;
+    setCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
+    void saveLessonProgress({ module: "Reading", lessonId: lesson.id, lessonTitle: lesson.title, score: correct ? 100 : 0, correctCount: Number(correct), totalCount: 1 });
   };
 
   const goNext = () => selectLesson(lessons[(activeIndex + 1) % lessons.length].id);
@@ -388,7 +395,7 @@ export function ReadingClient({ userName }: { userName: string }) {
           <div className="reading-hero-card card-one"><Search /><span><small>STEP 1</small><b>Find the claim</b></span></div>
           <div className="reading-hero-card card-two"><Target /><span><small>STEP 2</small><b>Verify evidence</b></span></div>
           <img src="/capi-official.png" alt="Capi Coach helping with a reading lesson" />
-          <span><Check /><b>{completed.length} of 14 practised</b><small>Your progress lasts for this visit</small></span>
+          <span><Check /><b>{completed.length} of 14 practised</b><small>Saved to your learning journey</small></span>
         </div>
       </section>
 

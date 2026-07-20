@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
-import { and, desc, eq, gte, isNotNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import * as schema from "./schema";
 import type { Skill } from "../lib/assessment";
 import { createDailyPlan, isoDate, weekEnd, weekStart } from "../lib/study-plan";
@@ -104,6 +104,48 @@ export function ensureAppSchema() {
       getD1().prepare(
         "CREATE INDEX IF NOT EXISTS capi_helper_gifts_status_created_at_idx ON capi_helper_gifts (status, created_at)",
       ),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS lesson_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        module TEXT NOT NULL,
+        lesson_id TEXT NOT NULL,
+        lesson_title TEXT NOT NULL,
+        status TEXT NOT NULL,
+        score REAL NOT NULL,
+        correct_count INTEGER NOT NULL,
+        total_count INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 1,
+        completed_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare(
+        "CREATE UNIQUE INDEX IF NOT EXISTS lesson_progress_user_module_lesson_uidx ON lesson_progress (user_email, module, lesson_id)",
+      ),
+      getD1().prepare(
+        "CREATE INDEX IF NOT EXISTS lesson_progress_user_updated_at_idx ON lesson_progress (user_email, updated_at)",
+      ),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS ai_practice_assessments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        skill TEXT NOT NULL,
+        lesson_id TEXT NOT NULL,
+        overall_band REAL NOT NULL,
+        criterion_one REAL NOT NULL,
+        criterion_two REAL NOT NULL,
+        criterion_three REAL NOT NULL,
+        criterion_four REAL NOT NULL,
+        summary TEXT NOT NULL,
+        strengths_json TEXT NOT NULL,
+        priorities_json TEXT NOT NULL,
+        word_count INTEGER,
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare(
+        "CREATE INDEX IF NOT EXISTS ai_practice_assessments_user_created_at_idx ON ai_practice_assessments (user_email, created_at)",
+      ),
+      getD1().prepare(
+        "CREATE INDEX IF NOT EXISTS ai_practice_assessments_user_skill_created_at_idx ON ai_practice_assessments (user_email, skill, created_at)",
+      ),
     ])
     .then(() => undefined);
   return schemaReady;
@@ -131,13 +173,90 @@ export async function getMockResultsForEmail(email: string, limit = 2) {
     .limit(limit);
 }
 
+export async function saveAiPracticeAssessment(input: {
+  userEmail: string;
+  skill: "Speaking" | "Writing";
+  lessonId: string;
+  lessonTitle: string;
+  overallBand: number;
+  criteria: [number, number, number, number];
+  summary: string;
+  strengths: string[];
+  priorities: string[];
+  wordCount?: number;
+}) {
+  await ensureAppSchema();
+  const createdAt = new Date().toISOString();
+  const db = getDb();
+  await db.insert(schema.aiPracticeAssessments).values({
+    userEmail: input.userEmail,
+    skill: input.skill,
+    lessonId: input.lessonId,
+    overallBand: input.overallBand,
+    criterionOne: input.criteria[0],
+    criterionTwo: input.criteria[1],
+    criterionThree: input.criteria[2],
+    criterionFour: input.criteria[3],
+    summary: input.summary.slice(0, 500),
+    strengthsJson: JSON.stringify(input.strengths.slice(0, 3)),
+    prioritiesJson: JSON.stringify(input.priorities.slice(0, 3)),
+    wordCount: input.wordCount ?? null,
+    createdAt,
+  });
+  const lessonScore = Math.round(input.overallBand / 9 * 100);
+  await db.insert(schema.lessonProgress).values({
+    userEmail: input.userEmail,
+    module: input.skill,
+    lessonId: input.lessonId,
+    lessonTitle: input.lessonTitle.slice(0, 160),
+    status: "completed",
+    score: lessonScore,
+    correctCount: lessonScore,
+    totalCount: 100,
+    attempts: 1,
+    completedAt: createdAt,
+    updatedAt: createdAt,
+  }).onConflictDoUpdate({
+    target: [schema.lessonProgress.userEmail, schema.lessonProgress.module, schema.lessonProgress.lessonId],
+    set: {
+      lessonTitle: input.lessonTitle.slice(0, 160),
+      status: "completed",
+      score: lessonScore,
+      correctCount: lessonScore,
+      totalCount: 100,
+      attempts: sql`${schema.lessonProgress.attempts} + 1`,
+      completedAt: createdAt,
+      updatedAt: createdAt,
+    },
+  });
+}
+
 export async function getDashboardLearningData(email: string, priority: Skill) {
   await ensureAppSchema();
   const now = new Date();
   const today = isoDate(now);
   const createdAt = now.toISOString();
+  const skills: Skill[] = ["Speaking", "Writing", "Reading", "Listening"];
+  const [progressRows, assessmentRows] = await Promise.all([
+    getDb().select().from(schema.lessonProgress)
+      .where(eq(schema.lessonProgress.userEmail, email))
+      .orderBy(desc(schema.lessonProgress.updatedAt)).limit(100),
+    getDb().select().from(schema.aiPracticeAssessments)
+      .where(eq(schema.aiPracticeAssessments.userEmail, email))
+      .orderBy(desc(schema.aiPracticeAssessments.createdAt)).limit(20),
+  ]);
+  const adaptiveScores = skills.flatMap((skill) => {
+    const recentExercises = progressRows.filter((row) => row.module === skill).slice(0, 5);
+    const latestAi = assessmentRows.find((row) => row.skill === skill);
+    if (!recentExercises.length && !latestAi) return [];
+    const exerciseScore = recentExercises.length ? recentExercises.reduce((total, row) => total + row.score, 0) / recentExercises.length : null;
+    const aiScore = latestAi ? latestAi.overallBand / 9 * 100 : null;
+    const score = aiScore !== null && exerciseScore !== null ? aiScore * .7 + exerciseScore * .3 : aiScore ?? exerciseScore ?? 100;
+    return [{ skill, score }];
+  });
+  const adaptivePriority = adaptiveScores.sort((a, b) => a.score - b.score)[0]?.skill ?? priority;
   await getDb().insert(schema.studyTasks).values(
-    createDailyPlan(priority, now).map((task) => ({
+    createDailyPlan(adaptivePriority, now).map((task) => ({
       userEmail: email,
       taskDate: today,
       skill: task.skill,
@@ -182,10 +301,48 @@ export async function getDashboardLearningData(email: string, priority: Skill) {
   }
   const earnedPoints = earned.length * 40;
   const giftedPoints = gifts.reduce((total, gift) => total + gift.coins, 0);
+  const lessonTotals: Record<Skill, number> = { Speaking: 3, Writing: 12, Reading: 14, Listening: 12 };
+  const moduleProgress = skills.map((skill) => {
+    const rows = progressRows.filter((row) => row.module === skill);
+    return {
+      skill,
+      completed: rows.length,
+      total: lessonTotals[skill],
+      averageScore: rows.length ? Math.round(rows.reduce((total, row) => total + row.score, 0) / rows.length) : null,
+    };
+  });
+  const currentWeekStart = `${weekStart(now)}T00:00:00.000Z`;
+  const weeklyLessonRows = progressRows.filter((row) => row.updatedAt >= currentWeekStart);
+  const weeklyExerciseAverage = weeklyLessonRows.length ? Math.round(weeklyLessonRows.reduce((total, row) => total + row.score, 0) / weeklyLessonRows.length) : null;
+  const latestAi = assessmentRows[0] ?? null;
+  const previousSameSkill = latestAi ? assessmentRows.find((row) => row.skill === latestAi.skill && row.id !== latestAi.id) ?? null : null;
+  const aiChange = latestAi && previousSameSkill ? Number((latestAi.overallBand - previousSameSkill.overallBand).toFixed(1)) : null;
+  const mockChange = mocks[0] && mocks[1] ? Number((mocks[0].overallBand - mocks[1].overallBand).toFixed(1)) : null;
   return {
     tasks,
     recent,
     mocks,
+    adaptivePriority,
+    moduleProgress,
+    assessmentHistory: assessmentRows.slice(0, 8).map((row) => ({
+      id: row.id,
+      skill: row.skill as "Speaking" | "Writing",
+      lessonId: row.lessonId,
+      overallBand: row.overallBand,
+      summary: row.summary,
+      createdAt: row.createdAt,
+    })),
+    weeklyReport: {
+      weekStart: weekStart(now),
+      lessonsCompleted: weeklyLessonRows.length,
+      exerciseAverage: weeklyExerciseAverage,
+      latestAiSkill: latestAi?.skill as "Speaking" | "Writing" | undefined,
+      latestAiBand: latestAi?.overallBand ?? null,
+      aiChange,
+      latestMockBand: mocks[0]?.overallBand ?? null,
+      mockChange,
+      focusSkill: adaptivePriority,
+    },
     stats: {
       points: Math.max(0, earnedPoints - giftedPoints),
       earnedPoints,

@@ -50,5 +50,5 @@ export default async function DashboardPage() {
     speakingConfidence: mock.speakingConfidence,
     createdAt: mock.createdAt,
   }));
-  return <DashboardClient userName={user.displayName} latest={latest} initialTasks={learning.tasks} recentTasks={learning.recent} initialStats={learning.stats} mocks={mocks} />;
+  return <DashboardClient userName={user.displayName} latest={latest} initialTasks={learning.tasks} recentTasks={learning.recent} initialStats={learning.stats} mocks={mocks} adaptivePriority={learning.adaptivePriority} moduleProgress={learning.moduleProgress} assessmentHistory={learning.assessmentHistory} weeklyReport={learning.weeklyReport} />;
 }

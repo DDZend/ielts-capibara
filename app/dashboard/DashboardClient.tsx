@@ -61,6 +61,33 @@ type DashboardStats = {
   totalMinutesToday: number;
 };
 
+type ModuleProgress = { skill: Skill; completed: number; total: number; averageScore: number | null };
+type AssessmentHistoryItem = { id: number; skill: "Speaking" | "Writing"; lessonId: string; overallBand: number; summary: string; createdAt: string };
+type WeeklyReport = {
+  weekStart: string;
+  lessonsCompleted: number;
+  exerciseAverage: number | null;
+  latestAiSkill?: "Speaking" | "Writing";
+  latestAiBand: number | null;
+  aiChange: number | null;
+  latestMockBand: number | null;
+  mockChange: number | null;
+  focusSkill: Skill;
+};
+
+type DashboardClientProps = {
+  userName: string;
+  latest: SavedAssessment | null;
+  initialTasks: DashboardTask[];
+  recentTasks: DashboardTask[];
+  initialStats: DashboardStats;
+  mocks: SavedMock[];
+  adaptivePriority: Skill;
+  moduleProgress: ModuleProgress[];
+  assessmentHistory: AssessmentHistoryItem[];
+  weeklyReport: WeeklyReport;
+};
+
 const modules: { skill: Skill; icon: typeof Mic2; className: string; tasks: string }[] = [
   { skill: "Speaking", icon: Mic2, className: "speaking", tasks: "3 practice prompts" },
   { skill: "Writing", icon: PenLine, className: "writing", tasks: "12 video lessons" },
@@ -79,7 +106,7 @@ const discountTiers = [
   { percent: 15, coins: 1500 },
 ] as const;
 
-export function DashboardClient({ userName, latest, initialTasks, recentTasks, initialStats, mocks }: { userName: string; latest: SavedAssessment | null; initialTasks: DashboardTask[]; recentTasks: DashboardTask[]; initialStats: DashboardStats; mocks: SavedMock[] }) {
+export function DashboardClient({ userName, latest, initialTasks, recentTasks, initialStats, mocks, adaptivePriority, moduleProgress, assessmentHistory, weeklyReport }: DashboardClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [coinsOpen, setCoinsOpen] = useState(false);
@@ -95,8 +122,9 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
   const [giftState, setGiftState] = useState<"idle" | "confirming" | "sending" | "sent" | "error">("idle");
   const [giftError, setGiftError] = useState("");
   const [sessionGifts, setSessionGifts] = useState(0);
+  const [reportShared, setReportShared] = useState(false);
   const [messages, setMessages] = useState<{ role: "capi" | "student"; text: string }[]>([
-    { role: "capi", text: `Hi! I’m focusing your plan on ${latest?.prioritySkill.toLowerCase() ?? "finding your starting level"}. What would you like help with?` },
+    { role: "capi", text: `Hi! I’m focusing your plan on ${adaptivePriority.toLowerCase()}. What would you like help with?` },
   ]);
   const firstName = userName.split(/[\s@]/)[0] || "Student";
   const score = latest?.overallBand ?? 0;
@@ -168,6 +196,14 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
     }
     setSessionGifts((current) => current + 1);
     setGiftState("sent");
+  };
+
+  const shareWeeklyReport = async () => {
+    const reportText = `My IELTS Mastery weekly report: ${weeklyReport.lessonsCompleted} lessons completed${weeklyReport.exerciseAverage !== null ? `, ${weeklyReport.exerciseAverage}% exercise average` : ""}${weeklyReport.latestAiBand !== null ? `, latest ${weeklyReport.latestAiSkill} estimate ${weeklyReport.latestAiBand.toFixed(1)}` : ""}. Next focus: ${weeklyReport.focusSkill}.`;
+    if (navigator.share) await navigator.share({ title: "My IELTS Mastery weekly report", text: reportText }).catch(() => undefined);
+    else await navigator.clipboard?.writeText(reportText).catch(() => undefined);
+    setReportShared(true);
+    window.setTimeout(() => setReportShared(false), 1800);
   };
 
   return (
@@ -271,7 +307,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
               )}
             </div>
             <span className="metric streak-metric"><Flame fill="currentColor" /><span><small>Streak</small><b>{liveStreak} {liveStreak === 1 ? "day" : "days"}</b></span></span>
-            <button className="notification interactive-control" aria-label="View 2 recent notifications" onClick={() => document.querySelector(".recent-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Bell /><i>2</i></button>
+            <button className="notification interactive-control" aria-label="View your weekly progress report" onClick={() => document.querySelector(".weekly-report-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Bell /><i>3</i></button>
             <label className="language-control dashboard-language interactive-control" title="Language"><Languages /><span>{language === "eng" ? "Eng" : language === "rus" ? "Рус" : "Қаз"}</span><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value as "eng" | "rus" | "kaz")}><option value="eng">Eng</option><option value="rus">Рус</option><option value="kaz">Қаз</option></select><ChevronDown /></label>
             <div className="topbar-control-wrap profile-control">
               <button className="profile-chip interactive-control" aria-label={`Open profile menu for ${userName}`} aria-haspopup="dialog" aria-expanded={profileOpen} aria-controls="profile-panel" onClick={() => { setProfileOpen((open) => !open); setCoinsOpen(false); }}><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>Target band {targetBand.toFixed(1)}</small></span><ChevronDown className="profile-chevron" /></button>
@@ -282,7 +318,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
 
         <div className="dashboard-content" id="dashboard-top">
           <section className={`welcome-card dashboard-card ${targetOpen ? "target-open" : ""}`}>
-            <div className="welcome-copy"><span className="eyebrow"><Sparkles /> Your personal study space</span><h1>Good to see you, {firstName}.</h1><p>{latest ? <>You&apos;re building toward Band {targetBand.toFixed(1)}. Today&apos;s plan gives extra attention to <b>{latest.prioritySkill.toLowerCase()}</b>.</> : <>Start with the free assessment and Capi will build your personal route to Band {targetBand.toFixed(1)}.</>}</p><div className="welcome-actions"><Link className="button primary" href={latest ? "#today-plan" : "/assessment"}>{latest ? "Continue today’s plan" : "Take the assessment"}<ArrowRight /></Link><button className="button soft" onClick={() => setTargetOpen((open) => !open)}><Target /> Target {targetBand.toFixed(1)}<ChevronDown /></button>{targetState === "saved" && <span className="saved-hint"><Check /> Saved</span>}</div>{targetOpen && <div className="target-picker" aria-label="Choose target band">{[6, 6.5, 7, 7.5, 8, 8.5, 9].map((band) => <button key={band} onClick={() => void updateTarget(band)} className={band === targetBand ? "selected" : ""}>{band.toFixed(1)}</button>)}</div>}</div>
+            <div className="welcome-copy"><span className="eyebrow"><Sparkles /> Your personal study space</span><h1>Good to see you, {firstName}.</h1><p>{latest ? <>You&apos;re building toward Band {targetBand.toFixed(1)}. Your saved results have adjusted today&apos;s plan toward <b>{adaptivePriority.toLowerCase()}</b>.</> : <>Start with the free assessment and Capi will build your personal route to Band {targetBand.toFixed(1)}.</>}</p><div className="welcome-actions"><Link className="button primary" href={latest ? "#today-plan" : "/assessment"}>{latest ? "Continue today’s plan" : "Take the assessment"}<ArrowRight /></Link><button className="button soft" onClick={() => setTargetOpen((open) => !open)}><Target /> Target {targetBand.toFixed(1)}<ChevronDown /></button>{targetState === "saved" && <span className="saved-hint"><Check /> Saved</span>}</div>{targetOpen && <div className="target-picker" aria-label="Choose target band">{[6, 6.5, 7, 7.5, 8, 8.5, 9].map((band) => <button key={band} onClick={() => void updateTarget(band)} className={band === targetBand ? "selected" : ""}>{band.toFixed(1)}</button>)}</div>}</div>
             <img src="/capi-welcome.png" alt="Capi Coach pointing upward and holding a small rocket" />
           </section>
 
@@ -294,10 +330,39 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
                 <div className="skill-grid" id="modules">{modules.map(({ skill, icon: Icon, className, tasks }) => <Link className={`skill-card ${className}`} href={skill === "Speaking" ? "/speaking" : skill === "Writing" ? "/writing" : skill === "Reading" ? "/reading" : "/listening"} aria-label={`Practise ${skill}. ${bands[skill] ? `Current estimate ${bands[skill]?.toFixed(1)}` : "Complete the assessment first"}`} key={skill}><span className="skill-card-icon"><Icon /></span><div><small>{skill}</small><b>{bands[skill]?.toFixed(1) ?? "—"}</b></div><p>{latest ? tasks : "Complete assessment"}</p><ChevronRight className="skill-card-chevron" /></Link>)}</div>
               </section>
 
+              <section className="learning-journey-card dashboard-card" id="learning-journey">
+                <div className="card-heading"><div><span className="eyebrow">Connected learning journey</span><h2>Progress across all four modules</h2></div><span className="adaptive-focus"><Sparkles /> Plan focus: {adaptivePriority}</span></div>
+                <div className="module-progress-grid">
+                  {moduleProgress.map((item) => {
+                    const moduleInfo = modules.find((module) => module.skill === item.skill) ?? modules[0];
+                    const Icon = moduleInfo.icon;
+                    const percentage = Math.min(100, Math.round(item.completed / item.total * 100));
+                    return <Link href={item.skill === "Speaking" ? "/speaking" : item.skill === "Writing" ? "/writing" : item.skill === "Reading" ? "/reading" : "/listening"} className={`module-progress-item ${moduleInfo.className}`} key={item.skill}><span><Icon /></span><div><small>{item.skill}</small><b>{item.completed} of {item.total} lessons</b><i><em style={{ width: `${percentage}%` }} /></i></div><strong>{item.averageScore !== null ? `${item.averageScore}%` : "Start"}</strong></Link>;
+                  })}
+                </div>
+                <div className="ai-history-panel">
+                  <div><span className="eyebrow">AI band history</span><h3>{assessmentHistory.length ? "Your Speaking and Writing estimates" : "Your first saved estimate will appear here"}</h3>{assessmentHistory[0] ? <p><b>{assessmentHistory[0].skill} {assessmentHistory[0].overallBand.toFixed(1)}:</b> {assessmentHistory[0].summary}</p> : <p>Submit a Speaking recording or Writing response to begin your improvement chart.</p>}</div>
+                  <div className="ai-history-chart" aria-label={`${assessmentHistory.length} saved AI assessments`}>
+                    {assessmentHistory.length ? assessmentHistory.slice(0, 6).reverse().map((item) => <span key={item.id}><i><em style={{ height: `${Math.max(12, item.overallBand / 9 * 100)}%` }} /></i><b>{item.overallBand.toFixed(1)}</b><small>{item.skill.slice(0, 1)}</small></span>) : <span className="empty"><i /><b>—</b><small>Waiting</small></span>}
+                  </div>
+                </div>
+              </section>
+
               <section id="today-plan" className="today-card dashboard-card">
                 <div className="card-heading"><div><span className="eyebrow">{new Intl.DateTimeFormat("en", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</span><h2>Today&apos;s study plan</h2></div><span className="time-total"><Clock3 /> {initialStats.totalMinutesToday} minutes</span></div>
                 <div className="plan-list">{tasks.map((task, index) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id} className={task.completedAt ? "completed" : ""}><time>{String(9 + index * 4).padStart(2, "0")}:00</time><span className={`plan-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title}</b><small>{task.completedAt ? "Completed today · +40 Capi-Coins" : `${task.minutes} min · ${task.taskType}`}</small></div><button aria-label={`${task.completedAt ? "Mark incomplete" : "Complete"} ${task.title}`} aria-pressed={Boolean(task.completedAt)} onClick={() => void toggleTask(task)} className={index === 0 || task.completedAt ? "active" : ""}>{task.completedAt ? <Check /> : index === 0 ? <Play fill="currentColor" /> : <ChevronRight />}</button></article>; })}</div>
                 <div className="weekly-line"><span><b>This week</b><small>{liveDays} of 5 study days complete</small></span><div><i style={{ width: `${weeklyPercent}%` }} /></div><b>{weeklyPercent}%</b></div>
+              </section>
+
+              <section className="weekly-report-card dashboard-card">
+                <div className="weekly-report-head"><div><span className="eyebrow"><CalendarDays /> Weekly progress report</span><h2>Your learning week at a glance</h2><p>Delivered inside your dashboard every Monday and updated as you practise.</p></div><span><Check /> Report ready</span></div>
+                <div className="weekly-report-metrics">
+                  <article><small>Lessons completed</small><b>{weeklyReport.lessonsCompleted}</b><span>This week</span></article>
+                  <article><small>Exercise average</small><b>{weeklyReport.exerciseAverage !== null ? `${weeklyReport.exerciseAverage}%` : "—"}</b><span>{weeklyReport.exerciseAverage !== null ? "Across saved tasks" : "Complete one exercise"}</span></article>
+                  <article><small>Latest AI estimate</small><b>{weeklyReport.latestAiBand !== null ? weeklyReport.latestAiBand.toFixed(1) : "—"}</b><span>{weeklyReport.latestAiSkill ?? "Speaking or Writing"}{weeklyReport.aiChange !== null ? ` · ${weeklyReport.aiChange >= 0 ? "+" : ""}${weeklyReport.aiChange.toFixed(1)}` : ""}</span></article>
+                  <article><small>Weekend mock</small><b>{weeklyReport.latestMockBand !== null ? weeklyReport.latestMockBand.toFixed(1) : "—"}</b><span>{weeklyReport.mockChange !== null ? `${weeklyReport.mockChange >= 0 ? "+" : ""}${weeklyReport.mockChange.toFixed(1)} vs previous` : "Complete your first mock"}</span></article>
+                </div>
+                <div className="weekly-report-insight"><span><Target /></span><div><small>Next-week adjustment</small><b>Capi is prioritising {weeklyReport.focusSkill}</b><p>Your plan uses recent exercise accuracy, saved AI bands and mock-test results to choose the module that needs the most attention.</p></div><button className="button soft" onClick={() => void shareWeeklyReport()}>{reportShared ? <><Check /> Report ready to share</> : <>Share report <ArrowRight /></>}</button></div>
               </section>
 
               <section className="recent-card dashboard-card"><div className="card-heading"><h2>Recent activity</h2></div><div className="activity-list">{activityTasks.map((task) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id}><span className={`activity-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title} completed</b><small>{task.minutes} minutes · {task.skill} · +40 Capi-Coins</small></div><time>{task.completedAt ? new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(task.completedAt)) : "Today"}</time></article>; })}{latest && <article><span className="activity-icon assessment"><BarChart3 /></span><div><b>Assessment result saved</b><small>Overall {latest.overallBand.toFixed(1)} · priority: {latest.prioritySkill}</small></div><time>{new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(latest.createdAt))}</time></article>}</div></section>
@@ -310,7 +375,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
 
               <section className="challenge-card dashboard-card"><div><span className="eyebrow light"><Zap /> Capi challenge</span><h2>Three focused days</h2><p>Complete one planned lesson on three different days this week.</p><div className="challenge-progress">{[1,2,3].map((day) => <span key={day} className={liveDays >= day ? "done" : ""}>{liveDays >= day ? <Check /> : day}</span>)}</div><small>{Math.min(liveDays, 3)} of 3 days complete</small></div><img src="/capi-challenge.png" alt="Capi Coach wearing a blue headband with a checklist and trophy" /></section>
 
-              <section className="capi-advice-card dashboard-card"><div className="advice-heading"><img src="/capi-advice.png" alt="Capi Coach with a magnifying glass and lightbulb" /><span><small>CAPI COACH</small><b>Today&apos;s advice</b></span></div><p>{latest ? <>Your <b>{latest.strengthSkill.toLowerCase()}</b> score gives you a strong base. For the next few sessions, slow down and check the structure of each <b>{latest.prioritySkill.toLowerCase()}</b> answer before adding detail.</> : <>Take the short assessment first. I&apos;ll use your four module estimates to choose the clearest place to begin.</>}</p><button onClick={() => setChatOpen(true)}>Ask Capi a question <ArrowRight /></button></section>
+              <section className="capi-advice-card dashboard-card"><div className="advice-heading"><img src="/capi-advice.png" alt="Capi Coach with a magnifying glass and lightbulb" /><span><small>CAPI COACH</small><b>Today&apos;s advice</b></span></div><p>{latest ? <>Your <b>{latest.strengthSkill.toLowerCase()}</b> score gives you a strong base. Your recent saved work now points to <b>{adaptivePriority.toLowerCase()}</b> as the clearest place for the next improvement.</> : <>Take the short assessment first. I&apos;ll use your four module estimates to choose the clearest place to begin.</>}</p><button onClick={() => setChatOpen(true)}>Ask Capi a question <ArrowRight /></button></section>
 
               <section className="live-class-card dashboard-card" id="live-class"><div className="live-image"><span>LIVE CLASS</span><img src="/capi-headset.png" alt="Capi Coach wearing a coaching headset" /></div><div><span className="eyebrow">Tuesday · 18:30</span><h3>Speaking Part 2: confident long turns</h3><p><Video /> With Anna Müller · 45 min</p><button className="button soft" aria-pressed={reserved} onClick={() => setReserved((value) => !value)}>{reserved ? <><Check /> Place reserved</> : <>Reserve my place <ArrowRight /></>}</button></div></section>
             </aside>

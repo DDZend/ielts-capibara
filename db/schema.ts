@@ -99,3 +99,52 @@ export const capiHelperGifts = sqliteTable(
 );
 
 export type CapiHelperGift = typeof capiHelperGifts.$inferSelect;
+
+export const lessonProgress = sqliteTable(
+  "lesson_progress",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    module: text("module").notNull(),
+    lessonId: text("lesson_id").notNull(),
+    lessonTitle: text("lesson_title").notNull(),
+    status: text("status").notNull(),
+    score: real("score").notNull(),
+    correctCount: integer("correct_count").notNull(),
+    totalCount: integer("total_count").notNull(),
+    attempts: integer("attempts").notNull().default(1),
+    completedAt: text("completed_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("lesson_progress_user_module_lesson_uidx").on(table.userEmail, table.module, table.lessonId),
+    index("lesson_progress_user_updated_at_idx").on(table.userEmail, table.updatedAt),
+  ],
+);
+
+export const aiPracticeAssessments = sqliteTable(
+  "ai_practice_assessments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    skill: text("skill").notNull(),
+    lessonId: text("lesson_id").notNull(),
+    overallBand: real("overall_band").notNull(),
+    criterionOne: real("criterion_one").notNull(),
+    criterionTwo: real("criterion_two").notNull(),
+    criterionThree: real("criterion_three").notNull(),
+    criterionFour: real("criterion_four").notNull(),
+    summary: text("summary").notNull(),
+    strengthsJson: text("strengths_json").notNull(),
+    prioritiesJson: text("priorities_json").notNull(),
+    wordCount: integer("word_count"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("ai_practice_assessments_user_created_at_idx").on(table.userEmail, table.createdAt),
+    index("ai_practice_assessments_user_skill_created_at_idx").on(table.userEmail, table.skill, table.createdAt),
+  ],
+);
+
+export type LessonProgress = typeof lessonProgress.$inferSelect;
+export type AiPracticeAssessment = typeof aiPracticeAssessments.$inferSelect;

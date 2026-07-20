@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
 import {
   ArrowLeft,
   ArrowRight,
@@ -161,6 +162,7 @@ export function SpeakingClient({ userName }: { userName: string }) {
   const [transcript, setTranscript] = useState("");
   const [feedbackState, setFeedbackState] = useState<"idle" | "loading" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [savedCompleted, setSavedCompleted] = useState<PartId[]>([]);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -169,7 +171,7 @@ export function SpeakingClient({ userName }: { userName: string }) {
   const audioUrlRef = useRef<string | null>(null);
 
   const lesson = lessons.find((item) => item.id === activeId) ?? lessons[0];
-  const completedLessons = new Set<PartId>();
+  const completedLessons = new Set<PartId>(savedCompleted);
   for (const item of lessons) {
     if (checkedQuizzes[item.id] && quizChoices[item.id] === item.vocabulary.answer) completedLessons.add(item.id);
   }
@@ -211,6 +213,10 @@ export function SpeakingClient({ userName }: { userName: string }) {
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     stopStream();
     if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+  }, []);
+
+  useEffect(() => {
+    void loadLessonProgress("Speaking").then((rows) => setSavedCompleted(rows.map((row) => row.lessonId as PartId)));
   }, []);
 
   const chooseLesson = (id: PartId) => {
@@ -279,7 +285,17 @@ export function SpeakingClient({ userName }: { userName: string }) {
     }
     setFeedback(payload.feedback);
     setTranscript(payload.transcript ?? "");
+    setSavedCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
     setFeedbackState("idle");
+  };
+
+  const checkVocabulary = () => {
+    const choice = quizChoices[lesson.id];
+    if (!choice) return;
+    const correct = choice === lesson.vocabulary.answer;
+    setCheckedQuizzes((current) => ({ ...current, [lesson.id]: true }));
+    setSavedCompleted((current) => current.includes(lesson.id) ? current : [...current, lesson.id]);
+    void saveLessonProgress({ module: "Speaking", lessonId: lesson.id, lessonTitle: lesson.title, score: correct ? 100 : 0, correctCount: Number(correct), totalCount: 1 });
   };
 
   const togglePhrase = (phrase: string) => {
@@ -371,7 +387,7 @@ export function SpeakingClient({ userName }: { userName: string }) {
               })}
             </div>
             <div className="vocabulary-check-row">
-              <button className="button speaking-primary" disabled={!quizChoices[lesson.id]} onClick={() => setCheckedQuizzes((current) => ({ ...current, [lesson.id]: true }))}>Check answer</button>
+              <button className="button speaking-primary" disabled={!quizChoices[lesson.id]} onClick={checkVocabulary}>Check answer</button>
               {checkedQuizzes[lesson.id] && <p className={quizChoices[lesson.id] === lesson.vocabulary.answer ? "success" : "retry"}>{quizChoices[lesson.id] === lesson.vocabulary.answer ? <Check /> : <RotateCcw />}{quizChoices[lesson.id] === lesson.vocabulary.answer ? lesson.vocabulary.explanation : "Not quite — try another meaning."}</p>}
             </div>
           </article>
@@ -404,7 +420,7 @@ export function SpeakingClient({ userName }: { userName: string }) {
             {feedbackState === "error" && message && <p className="speaking-error" role="alert"><CircleAlert />{message}</p>}
 
             <div className="feedback-submit-row">
-              <span><LockKeyhole /><small><b>Private by design</b>Your recording is assessed for this response and is not saved to your profile.</small></span>
+              <span><LockKeyhole /><small><b>Private progress</b>Your band estimate and coaching points are saved. Audio and transcript are not stored.</small></span>
               <button className="button speaking-primary" disabled={!audioBlob || isRecording || feedbackState === "loading"} onClick={() => void submitRecording()}>{feedbackState === "loading" ? <><i className="speaking-spinner" /> Capi is assessing…</> : <>Get AI feedback <ArrowRight /></>}</button>
             </div>
 
