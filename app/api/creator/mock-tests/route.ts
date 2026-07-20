@@ -26,7 +26,7 @@ async function library(teacherEmail: string) {
 }
 
 export async function GET() {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("mocks");
   if (!auth.user) return json({ error: auth.status === 401 ? "Sign in required." : "Teacher access required." }, auth.status);
   await ensureMockCatalog(auth.user.email);
   return json({ dashboard: await getTeacherMockDashboard(), library: await library(auth.user.email) });
@@ -37,7 +37,7 @@ function cleanDuration(value: unknown, fallback: number) {
 }
 
 export async function POST(request: Request) {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("mocks");
   if (!auth.user) return json({ error: auth.status === 401 ? "Sign in required." : "Teacher access required." }, auth.status);
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body || typeof body.title !== "string" || !body.title.trim() || body.title.length > 140
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("mocks");
   if (!auth.user) return json({ error: auth.status === 401 ? "Sign in required." : "Teacher access required." }, auth.status);
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body || typeof body.action !== "string") return json({ error: "Choose an action." }, 400);

@@ -40,7 +40,7 @@ export function MembershipAdminClient({ userName, initialSnapshot }: { userName:
   };
 
   return <main className="membership-admin-shell">
-    <header className="membership-admin-topbar"><Link href="/creator"><ArrowLeft /> Creator Studio</Link><span><ShieldCheck /> Teacher-only billing controls</span><div><small>Signed in as</small><b>{userName}</b></div></header>
+    <header className="membership-admin-topbar"><Link href="/teacher"><ArrowLeft /> Teacher workspace</Link><span><ShieldCheck /> Teacher-only billing controls</span><div><small>Signed in as</small><b>{userName}</b></div></header>
     <section className="membership-admin-hero"><div><span><CreditCard /> MEMBERSHIP OPERATIONS</span><h1>Access, payments and student care.</h1><p>See every learner’s entitlement, grant access, manage offers, resolve failed payments, cancel plans and issue auditable refunds.</p></div><button onClick={() => void refresh()} disabled={Boolean(busy)}>{busy === "refresh" ? <LoaderCircle className="spin" /> : <RefreshCw />} Refresh Stripe records</button></section>
     <div className="membership-admin-page">
       {(message || error) && <p className={`membership-admin-message ${error ? "error" : "success"}`}>{error ? <CircleAlert /> : <Check />}{error || message}</p>}

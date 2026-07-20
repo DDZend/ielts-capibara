@@ -105,14 +105,14 @@ function isLessonStatus(value: unknown): value is LessonStatus {
 }
 
 export async function GET() {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("content");
   if (!auth.user) return errorResponse(auth.status === 401 ? "Sign in required." : "Teacher access required.", auth.status);
   await ensureCreatorCatalog(auth.user.email);
   return NextResponse.json({ lessons: await getCreatorLessons() });
 }
 
 export async function PUT(request: Request) {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("content");
   if (!auth.user) return errorResponse(auth.status === 401 ? "Sign in required." : "Teacher access required.", auth.status);
   let body: Record<string, unknown>;
   try {
@@ -146,7 +146,7 @@ export async function PUT(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("content");
   if (!auth.user) return errorResponse(auth.status === 401 ? "Sign in required." : "Teacher access required.", auth.status);
   let body: Record<string, unknown>;
   try {

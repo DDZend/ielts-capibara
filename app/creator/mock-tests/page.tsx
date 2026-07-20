@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MockTestStudioPage() {
-  const user = await requireCreatorUser("/creator/mock-tests");
+  const user = await requireCreatorUser("/creator/mock-tests", "mocks");
   await Promise.all([ensureCreatorCatalog(user.email), ensureMockCatalog(user.email)]);
   const lessons = await getCreatorLessons();
   const library = lessons.flatMap((lesson) => lesson.exercises.map((exercise) => ({

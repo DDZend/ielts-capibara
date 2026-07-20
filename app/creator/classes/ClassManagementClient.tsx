@@ -58,7 +58,7 @@ export function ClassManagementClient({ userName, initialSnapshot }: { userName:
   const cohortChoices = snapshot.cohorts.filter((item) => item.status === "active").map((item) => <option value={item.id} key={item.id}>{item.name}</option>);
 
   return <main className="class-admin-shell">
-    <header className="class-admin-topbar"><Link href="/creator"><ArrowLeft /> Creator Studio</Link><span><School /> Teacher & class management</span><div><small>Signed in as</small><b>{userName}</b></div></header>
+    <header className="class-admin-topbar"><Link href="/teacher"><ArrowLeft /> Teacher workspace</Link><span><School /> Teacher & class management</span><div><small>Signed in as</small><b>{userName}</b></div></header>
     <section className="class-admin-hero"><div><span><CalendarDays /> LIVE TEACHING OPERATIONS</span><h1>Turn memberships into learning relationships.</h1><p>Organise students, protect package allowances and keep every class, assignment, note and attendance record in one place.</p></div><button onClick={() => void refresh()} disabled={Boolean(busy)}>{busy === "refresh" ? <LoaderCircle className="spin" /> : <RefreshCw />} Refresh records</button></section>
     <div className="class-admin-layout">
       <aside className="class-admin-nav">{tabs.map((item) => { const Icon = item.icon; return <button className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)} key={item.id}><Icon /><span>{item.label}</span><ChevronRight /></button>; })}<Link href="/classes" target="_blank"><ExternalLink /> Student view</Link></aside>

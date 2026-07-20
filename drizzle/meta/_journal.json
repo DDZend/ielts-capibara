@@ -71,6 +71,13 @@
       "when": 1784574299267,
       "tag": "0009_adorable_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784577843500,
+      "tag": "0010_heavy_prowler",
+      "breakpoints": true
     }
   ]
 }

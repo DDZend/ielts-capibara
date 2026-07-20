@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const attemptId = Number(url.searchParams.get("attemptId"));
   const itemKey = url.searchParams.get("itemKey") ?? "";
   if (!Number.isInteger(attemptId) || !itemKey) return NextResponse.json({ error: "Invalid recording." }, { status: 400 });
-  const creator = await getApiCreatorUser();
+  const creator = await getApiCreatorUser("mocks");
   if (creator.user) {
     const recording = await getMockRecording(creator.user.email, attemptId, itemKey, true);
     if (!recording) return NextResponse.json({ error: "Recording not found." }, { status: 404 });

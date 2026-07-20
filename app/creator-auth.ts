@@ -1,30 +1,40 @@
-import { env } from "cloudflare:workers";
 import { redirect } from "next/navigation";
-import { getChatGPTUser, requireChatGPTUser } from "./chatgpt-auth";
+import { getStaffAccess, staffHasPermission, type StaffAccess } from "../db/staff";
+import type { CreatorPermission } from "../lib/staff-roles";
+import { getChatGPTUser, requireChatGPTUser, type ChatGPTUser } from "./chatgpt-auth";
 
-function teacherEmails() {
-  const values = env as unknown as Record<string, string | undefined>;
-  return new Set(
-    (values.TEACHER_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-  );
+export type CreatorUser = ChatGPTUser & { staff: StaffAccess };
+
+export async function isCreatorEmail(email: string, permission?: CreatorPermission) {
+  const staff = await getStaffAccess(email);
+  return staffHasPermission(staff, permission);
 }
 
-export function isCreatorEmail(email: string) {
-  return teacherEmails().has(email.trim().toLowerCase());
-}
-
-export async function requireCreatorUser(returnTo = "/creator") {
+export async function requireCreatorUser(returnTo = "/creator", permission?: CreatorPermission): Promise<CreatorUser> {
   const user = await requireChatGPTUser(returnTo);
-  if (isCreatorEmail(user.email)) return user;
-  redirect("/dashboard?creator=restricted");
+  const staff = await getStaffAccess(user.email, user.displayName);
+  if (staffHasPermission(staff, permission) && staff) return { ...user, staff };
+
+  const reason = staff?.status === "inactive" ? "inactive" : staff?.status === "active" ? "permission" : "approval";
+  redirect(`/teacher-access?reason=${reason}`);
 }
 
-export async function getApiCreatorUser() {
+export async function requireOwnerUser(returnTo = "/creator/team"): Promise<CreatorUser> {
+  const user = await requireCreatorUser(returnTo);
+  if (user.staff.role === "owner") return user;
+  redirect("/teacher-access?reason=owner");
+}
+
+export async function getApiCreatorUser(permission?: CreatorPermission) {
   const user = await getChatGPTUser();
-  if (!user) return { user: null, status: 401 as const };
-  if (!isCreatorEmail(user.email)) return { user: null, status: 403 as const };
-  return { user, status: 200 as const };
+  if (!user) return { user: null, staff: null, status: 401 as const };
+  const staff = await getStaffAccess(user.email, user.displayName);
+  if (!staffHasPermission(staff, permission) || !staff) return { user: null, staff, status: 403 as const };
+  return { user, staff, status: 200 as const };
+}
+
+export async function getApiOwnerUser() {
+  const auth = await getApiCreatorUser();
+  if (!auth.user || auth.staff?.role !== "owner") return { user: null, staff: auth.staff, status: auth.status === 401 ? 401 as const : 403 as const };
+  return auth;
 }

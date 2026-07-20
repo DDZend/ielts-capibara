@@ -17,10 +17,7 @@ import {
   Target,
   Video,
 } from "lucide-react";
-import {
-  chatGPTSignInPath,
-  getChatGPTUser,
-} from "./chatgpt-auth";
+import { getChatGPTUser } from "./chatgpt-auth";
 
 const modules = [
   { name: "Speaking", text: "Build confidence for every part of the interview.", icon: Mic2, className: "speaking" },
@@ -67,8 +64,8 @@ export default async function Home() {
               </select>
               <ChevronDown size={14} />
             </label>
-            <Link className="button secondary small" href={user ? "/dashboard" : chatGPTSignInPath("/dashboard")}>
-              {user ? "Go to my study plan" : "Sign in"}
+            <Link className="button secondary small" href="/login">
+              {user ? "Choose workspace" : "Sign in"}
             </Link>
             <details className="mobile-menu">
               <summary aria-label="Open menu"><Menu size={22} /></summary>

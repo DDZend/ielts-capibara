@@ -15,7 +15,7 @@ function safeName(name: string) {
 }
 
 export async function POST(request: Request) {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("content");
   if (!auth.user) return NextResponse.json({ error: auth.status === 401 ? "Sign in required." : "Teacher access required." }, { status: auth.status });
   let form: FormData;
   try {

@@ -233,7 +233,7 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
           <Link className="nav-item" href="/classes" onClick={() => setSidebarOpen(false)}><span><Video /></span>Classes & homework<ChevronRight /></Link>
           <a className="nav-item" href="#study-calendar" onClick={() => setSidebarOpen(false)}><span><CalendarDays /></span>Study calendar</a>
           <Link className="nav-item" href="/billing" onClick={() => setSidebarOpen(false)}><span><CreditCard /></span>Membership & billing<ChevronRight /></Link>
-          {isCreator && <Link className="nav-item creator-nav-item" href="/creator" onClick={() => setSidebarOpen(false)}><span><Sparkles /></span>Creator Studio<ChevronRight /></Link>}
+          {isCreator && <Link className="nav-item creator-nav-item" href="/teacher" onClick={() => setSidebarOpen(false)}><span><Sparkles /></span>Teacher workspace<ChevronRight /></Link>}
           <div className="nav-line" />
           <button className="nav-item" onClick={() => { setTargetOpen(true); setSidebarOpen(false); document.getElementById("dashboard-top")?.scrollIntoView(); }}><span><Settings /></span>Target settings</button>
         </nav>

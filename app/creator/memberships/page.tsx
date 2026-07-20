@@ -11,6 +11,6 @@ export const metadata: Metadata = {
 };
 
 export default async function MembershipsPage() {
-  const user = await requireCreatorUser("/creator/memberships");
+  const user = await requireCreatorUser("/creator/memberships", "memberships");
   return <MembershipAdminClient userName={user.displayName} initialSnapshot={await getMembershipAdminSnapshot()} />;
 }

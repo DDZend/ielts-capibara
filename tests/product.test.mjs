@@ -22,6 +22,10 @@ test("all requested routes are present", async () => {
     access(new URL("app/classes/page.tsx", root)),
     access(new URL("app/creator/classes/page.tsx", root)),
     access(new URL("app/creator/mock-tests/page.tsx", root)),
+    access(new URL("app/login/page.tsx", root)),
+    access(new URL("app/teacher/page.tsx", root)),
+    access(new URL("app/teacher-access/page.tsx", root)),
+    access(new URL("app/creator/team/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
@@ -359,8 +363,8 @@ test("Creator Studio is private, persistent and controls every student module", 
     read("app/creator/ExerciseBuilder.tsx"),
     read("app/PublishedExercises.tsx"),
   ]);
-  assert.match(page, /requireCreatorUser\("\/creator"\)/);
-  assert.match(auth, /TEACHER_EMAILS/);
+  assert.match(page, /requireCreatorUser\("\/creator", "content"\)/);
+  assert.match(auth, /getStaffAccess/);
   assert.match(auth, /isCreatorEmail/);
   assert.match(lessonsApi, /getApiCreatorUser/);
   assert.match(lessonsApi, /reorderCreatorLessons/);
@@ -377,7 +381,7 @@ test("Creator Studio is private, persistent and controls every student module", 
     assert.match(source, /answer_key_json/);
   }
   assert.match(hosting, /"r2": "MEDIA"/);
-  assert.match(dashboard, /Creator Studio/);
+  assert.match(dashboard, /Teacher workspace/);
   assert.match(publishedContent, /Teacher video/);
   assert.match(publishedContent, /Lesson materials/);
   const exerciseTypeIds = ["single-choice", "multiple-choice", "true-false-not-given", "yes-no-not-given", "matching", "categorisation", "ordering", "fill-gap", "short-answer", "paragraph-response", "essay-response", "speaking-response"];
@@ -395,6 +399,46 @@ test("Creator Studio is private, persistent and controls every student module", 
     assert.match(source, /PublishedLessonVideo/);
     assert.match(source, /PublishedLessonMaterials/);
   }
+});
+
+test("one secure sign-in routes students and approved teachers into permissioned workspaces", async () => {
+  const [login, teacherEntry, accessPage, accessApi, creatorAuth, staffDb, staffRoles, schema, runtimeSchema, teamPage, teamApi, teamClient, dashboard] = await Promise.all([
+    read("app/login/page.tsx"),
+    read("app/teacher/page.tsx"),
+    read("app/teacher-access/TeacherAccessClient.tsx"),
+    read("app/api/teacher-access/route.ts"),
+    read("app/creator-auth.ts"),
+    read("db/staff.ts"),
+    read("lib/staff-roles.ts"),
+    read("db/schema.ts"),
+    read("db/index.ts"),
+    read("app/creator/team/page.tsx"),
+    read("app/api/creator/team/route.ts"),
+    read("app/creator/team/TeacherTeamClient.tsx"),
+    read("app/dashboard/DashboardClient.tsx"),
+  ]);
+  assert.match(login, /chatGPTSignInPath\("\/dashboard"\)/);
+  assert.match(login, /chatGPTSignInPath\("\/teacher"\)/);
+  assert.doesNotMatch(login, /password/i);
+  assert.match(teacherEntry, /getStaffAccess/);
+  assert.match(teacherEntry, /staff\.permissions\.includes/);
+  assert.match(accessPage, /Request teacher access/);
+  assert.match(accessApi, /requestTeacherAccess/);
+  assert.match(creatorAuth, /staffHasPermission\(staff, permission\)/);
+  assert.match(creatorAuth, /requireOwnerUser/);
+  assert.match(staffDb, /INSERT OR IGNORE INTO staff_roles/);
+  assert.match(staffDb, /status = 'active'/);
+  assert.match(staffRoles, /"content", "classes", "memberships", "mocks"/);
+  for (const source of [schema, runtimeSchema]) {
+    assert.match(source, /staff_roles/);
+    assert.match(source, /teacher_access_requests/);
+  }
+  assert.match(teamPage, /requireOwnerUser/);
+  assert.match(teamApi, /getApiOwnerUser/);
+  for (const action of ["inviteTeacher", "reviewTeacherRequest", "updateTeacher"]) assert.match(teamApi, new RegExp(action));
+  assert.match(teamClient, /Workspace permissions/);
+  assert.match(teamClient, /Deactivate/);
+  assert.match(dashboard, /href="\/teacher"/);
 });
 
 test("commercial access uses server-calculated discounts and signed payment events", async () => {
@@ -533,7 +577,7 @@ test("mock-test studio builds reordered versions from the creator question libra
     read("app/creator/CreatorStudioClient.tsx"),
     read("db/mock-engine.ts"),
   ]);
-  assert.match(page, /requireCreatorUser\("\/creator\/mock-tests"\)/);
+  assert.match(page, /requireCreatorUser\("\/creator\/mock-tests", "mocks"\)/);
   assert.match(api, /getApiCreatorUser/);
   assert.match(api, /lesson\.exercises/);
   assert.match(api, /refs/);

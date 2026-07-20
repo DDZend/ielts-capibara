@@ -6,6 +6,7 @@ import type { CourseModule } from "../../lib/course-catalog";
 import { COURSE_MODULES } from "../../lib/course-catalog";
 import type { CreatorLessonContent, LessonStatus } from "../../lib/creator-content";
 import type { CourseExercise } from "../../lib/exercise-types";
+import type { CreatorPermission } from "../../lib/staff-roles";
 import { ExerciseBuilder } from "./ExerciseBuilder";
 import {
   ArrowDown,
@@ -30,6 +31,7 @@ import {
   PenLine,
   Save,
   Sparkles,
+  UserCog,
   Video,
 } from "lucide-react";
 
@@ -60,7 +62,7 @@ function lines(value: string) {
   return value.split("\n").map((item) => item.trim()).filter(Boolean);
 }
 
-export function CreatorStudioClient({ userName, initialLessons }: { userName: string; initialLessons: CreatorLessonContent[] }) {
+export function CreatorStudioClient({ userName, isOwner, permissions, initialLessons }: { userName: string; isOwner: boolean; permissions: CreatorPermission[]; initialLessons: CreatorLessonContent[] }) {
   const [lessons, setLessons] = useState(initialLessons);
   const [activeModule, setActiveModule] = useState<CourseModule>("Speaking");
   const [activeLessonId, setActiveLessonId] = useState(initialLessons[0]?.lessonId ?? "");
@@ -193,7 +195,7 @@ export function CreatorStudioClient({ userName, initialLessons }: { userName: st
 
       <section className="creator-hero">
         <div><span className="creator-kicker"><CloudUpload /> CREATOR STUDIO</span><h1>Publish the course without touching code.</h1><p>Upload your original media, add learning materials, control lesson order and decide exactly what students can see.</p></div>
-        <aside><strong>{publishedCount}<small>published lessons</small></strong><strong>{lessons.length - publishedCount}<small>private or hidden</small></strong><Link href={modulePaths[activeModule]} target="_blank"><Eye /> Preview {activeModule}</Link><Link href="/creator/mock-tests"><FileStack /> Mock-Test Studio</Link><Link href="/creator/classes"><CalendarDays /> Students & classes</Link><Link href="/creator/memberships"><CreditCard /> Memberships</Link></aside>
+        <aside><strong>{publishedCount}<small>published lessons</small></strong><strong>{lessons.length - publishedCount}<small>private or hidden</small></strong><Link href={modulePaths[activeModule]} target="_blank"><Eye /> Preview {activeModule}</Link>{permissions.includes("mocks") && <Link href="/creator/mock-tests"><FileStack /> Mock-Test Studio</Link>}{permissions.includes("classes") && <Link href="/creator/classes"><CalendarDays /> Students & classes</Link>}{permissions.includes("memberships") && <Link href="/creator/memberships"><CreditCard /> Memberships</Link>}{isOwner && <Link href="/creator/team"><UserCog /> Teacher team</Link>}</aside>
       </section>
 
       <section className="creator-workspace">

@@ -11,13 +11,13 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const finiteInt = (value: unknown, fallback = 0) => Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : fallback;
 
 export async function GET() {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("memberships");
   if (!auth.user) return NextResponse.json({ error: auth.status === 401 ? "Authentication required" : "Teacher access required" }, { status: auth.status });
   return NextResponse.json({ snapshot: await getMembershipAdminSnapshot() });
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("memberships");
   if (!auth.user) return NextResponse.json({ error: auth.status === 401 ? "Authentication required" : "Teacher access required" }, { status: auth.status });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const action = typeof body?.action === "string" ? body.action : "";

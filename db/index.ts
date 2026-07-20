@@ -270,6 +270,20 @@ export function ensureAppSchema() {
       )`),
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS billing_notifications_event_uidx ON billing_notifications (stripe_event_id)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS billing_notifications_user_created_at_idx ON billing_notifications (user_email, created_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS staff_roles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, display_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'teacher', status TEXT NOT NULL DEFAULT 'invited', permissions_json TEXT NOT NULL DEFAULT '[]',
+        invited_by TEXT NOT NULL, invited_at TEXT NOT NULL, activated_at TEXT, last_signed_in_at TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS staff_roles_email_uidx ON staff_roles (email)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS staff_roles_status_role_idx ON staff_roles (status, role)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS teacher_access_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, display_name TEXT NOT NULL, message TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending', requested_at TEXT NOT NULL, reviewed_by TEXT, reviewed_at TEXT
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS teacher_access_requests_email_uidx ON teacher_access_requests (email)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS teacher_access_requests_status_requested_idx ON teacher_access_requests (status, requested_at)"),
       getD1().prepare(`CREATE TABLE IF NOT EXISTS teacher_profiles (
         id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, display_name TEXT NOT NULL,
         timezone TEXT NOT NULL DEFAULT 'Asia/Almaty', color TEXT NOT NULL DEFAULT '#16803e', active INTEGER NOT NULL DEFAULT 1,

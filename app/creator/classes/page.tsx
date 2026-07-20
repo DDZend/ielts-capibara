@@ -11,6 +11,6 @@ export const metadata: Metadata = {
 };
 
 export default async function CreatorClassesPage() {
-  const user = await requireCreatorUser("/creator/classes");
+  const user = await requireCreatorUser("/creator/classes", "classes");
   return <ClassManagementClient userName={user.displayName} initialSnapshot={await getTeacherClassSnapshot(user.email, user.displayName)} />;
 }

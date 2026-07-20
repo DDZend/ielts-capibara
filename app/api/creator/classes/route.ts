@@ -11,13 +11,13 @@ const numberValue = (value: unknown) => Number.isFinite(Number(value)) ? Math.tr
 const isoValue = (value: unknown) => { const date = new Date(String(value ?? "")); return Number.isNaN(date.getTime()) ? null : date.toISOString(); };
 
 export async function GET() {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("classes");
   if (!auth.user) return NextResponse.json({ error: auth.status === 401 ? "Authentication required" : "Teacher access required" }, { status: auth.status });
   return NextResponse.json({ snapshot: await getTeacherClassSnapshot(auth.user.email, auth.user.displayName) });
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await getApiCreatorUser();
+  const auth = await getApiCreatorUser("classes");
   if (!auth.user) return NextResponse.json({ error: auth.status === 401 ? "Authentication required" : "Teacher access required" }, { status: auth.status });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const action = textValue(body?.action, 40);

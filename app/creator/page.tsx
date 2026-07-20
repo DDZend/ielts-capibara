@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function CreatorPage() {
-  const user = await requireCreatorUser("/creator");
+  const user = await requireCreatorUser("/creator", "content");
   await ensureCreatorCatalog(user.email);
   const lessons = await getCreatorLessons();
-  return <CreatorStudioClient userName={user.displayName} initialLessons={lessons} />;
+  return <CreatorStudioClient userName={user.displayName} isOwner={user.staff.role === "owner"} permissions={user.staff.permissions} initialLessons={lessons} />;
 }

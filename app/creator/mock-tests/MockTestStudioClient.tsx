@@ -60,7 +60,7 @@ export function MockTestStudioClient({ userName, initialDashboard, initialLibrar
   };
 
   return <main className="mock-studio-shell">
-    <header className="mock-studio-topbar"><Link href="/creator"><ArrowLeft /> Creator Studio</Link><span><Sparkles /> Mock-Test Studio</span><div><small>Teacher</small><b>{userName}</b></div></header>
+    <header className="mock-studio-topbar"><Link href="/teacher"><ArrowLeft /> Teacher workspace</Link><span><Sparkles /> Mock-Test Studio</span><div><small>Teacher</small><b>{userName}</b></div></header>
     <section className="mock-studio-hero"><div><span>ASSESSMENT ENGINE</span><h1>Build the exam. Measure the progress.</h1><p>Turn your question library into secure, timed IELTS mocks with rotating versions and teacher-controlled final bands.</p></div><aside><strong>{dashboard.versions.filter((item) => item.status === "published").length}<small>live versions</small></strong><strong>{dashboard.attempts.length}<small>submitted mocks</small></strong><strong>{initialLibrary.length}<small>library questions</small></strong></aside></section>
     <nav className="mock-studio-tabs">
       <button className={tab === "builder" ? "active" : ""} onClick={() => setTab("builder")}><FileStack /> Builder</button>

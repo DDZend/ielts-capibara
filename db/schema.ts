@@ -323,6 +323,46 @@ export const billingNotifications = sqliteTable(
   ],
 );
 
+export const staffRoles = sqliteTable(
+  "staff_roles",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    displayName: text("display_name").notNull(),
+    role: text("role").notNull().default("teacher"),
+    status: text("status").notNull().default("invited"),
+    permissionsJson: text("permissions_json").notNull().default("[]"),
+    invitedBy: text("invited_by").notNull(),
+    invitedAt: text("invited_at").notNull(),
+    activatedAt: text("activated_at"),
+    lastSignedInAt: text("last_signed_in_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("staff_roles_email_uidx").on(table.email),
+    index("staff_roles_status_role_idx").on(table.status, table.role),
+  ],
+);
+
+export const teacherAccessRequests = sqliteTable(
+  "teacher_access_requests",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    displayName: text("display_name").notNull(),
+    message: text("message").notNull().default(""),
+    status: text("status").notNull().default("pending"),
+    requestedAt: text("requested_at").notNull(),
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: text("reviewed_at"),
+  },
+  (table) => [
+    uniqueIndex("teacher_access_requests_email_uidx").on(table.email),
+    index("teacher_access_requests_status_requested_idx").on(table.status, table.requestedAt),
+  ],
+);
+
 export const teacherProfiles = sqliteTable(
   "teacher_profiles",
   {
