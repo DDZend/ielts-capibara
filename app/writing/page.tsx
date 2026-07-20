@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { requireLearningAccess } from "../learning-access";
 import { WritingClient } from "./WritingClient";
+import { getStudentCreatorLessons } from "../../db/creator";
+import { CourseUnavailable } from "../CourseUnavailable";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +13,7 @@ export const metadata: Metadata = {
 
 export default async function WritingPage() {
   const user = await requireLearningAccess("/writing");
-  return <WritingClient userName={user.displayName} />;
+  const creatorLessons = await getStudentCreatorLessons("Writing");
+  if (creatorLessons.length && !creatorLessons.some((lesson) => lesson.status === "published")) return <CourseUnavailable module="Writing" />;
+  return <WritingClient userName={user.displayName} creatorLessons={creatorLessons} />;
 }

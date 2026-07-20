@@ -207,6 +207,37 @@ export function ensureAppSchema() {
       )`),
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS paid_access_passes_checkout_session_uidx ON paid_access_passes (stripe_checkout_session_id)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS paid_access_passes_user_expires_at_idx ON paid_access_passes (user_email, expires_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS media_assets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_email TEXT NOT NULL,
+        r2_key TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        content_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS media_assets_r2_key_uidx ON media_assets (r2_key)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS media_assets_owner_created_at_idx ON media_assets (owner_email, created_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS creator_lessons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        module TEXT NOT NULL,
+        lesson_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'published',
+        video_media_id INTEGER,
+        audio_media_id INTEGER,
+        vocabulary_json TEXT NOT NULL DEFAULT '[]',
+        exercises_json TEXT NOT NULL DEFAULT '[]',
+        transcript TEXT NOT NULL DEFAULT '',
+        answer_key_json TEXT NOT NULL DEFAULT '[]',
+        updated_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS creator_lessons_module_lesson_uidx ON creator_lessons (module, lesson_id)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS creator_lessons_module_position_idx ON creator_lessons (module, position)"),
     ])
     .then(() => undefined);
   return schemaReady;

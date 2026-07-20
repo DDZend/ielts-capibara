@@ -4,6 +4,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
+import type { StudentLessonContent } from "../../lib/creator-content";
+import { applyPublishedLessonOrder } from "../../lib/creator-content";
+import { PublishedLessonMaterials, PublishedLessonVideo } from "../PublishedLessonContent";
 import {
   ArrowLeft,
   ArrowRight,
@@ -176,7 +179,8 @@ const lessons: WritingLesson[] = [
 const countWords = (text: string) => text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-export function WritingClient({ userName }: { userName: string }) {
+export function WritingClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+  const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
   const [filter, setFilter] = useState<TrackFilter>("all");
   const [activeId, setActiveId] = useState<LessonId>("line-graph");
   const [drafts, setDrafts] = useState<Partial<Record<LessonId, string>>>({});
@@ -190,7 +194,8 @@ export function WritingClient({ userName }: { userName: string }) {
   const [message, setMessage] = useState("");
   const [completed, setCompleted] = useState<LessonId[]>([]);
 
-  const lesson = lessons.find((item) => item.id === activeId) ?? lessons[0];
+  const lesson = courseLessons.find((item) => item.id === activeId) ?? courseLessons[0];
+  const creatorContent = creatorLessons.find((item) => item.lessonId === lesson.id && item.status === "published");
   const draft = drafts[lesson.id] ?? "";
   const wordCount = useMemo(() => countWords(draft), [draft]);
   const firstName = userName.split(/[\s@]/)[0] || "Student";
@@ -301,11 +306,12 @@ export function WritingClient({ userName }: { userName: string }) {
           {trackSections.filter((section) => filter === "all" || filter === `task${section.task}`).map((section) => <section className={`writing-track-section task${section.task}`} key={section.task}>
             <div className="writing-track-heading"><span><small>{section.label}</small><b>{section.title}</b></span><p>{section.description}</p><em>{section.meta}</em></div>
             <div className="writing-lesson-grid">
-              {lessons.filter((item) => item.task === section.task).map((item) => {
+              {courseLessons.filter((item) => item.task === section.task).map((item) => {
                 const Icon = item.icon;
                 const active = item.id === lesson.id;
+                const teacherVideoReady = Boolean(creatorLessons.find((content) => content.lessonId === item.id)?.videoUrl);
                 return <button key={item.id} className={`writing-lesson-card ${active ? "active" : ""} ${completed.includes(item.id) ? "complete" : ""}`} onClick={() => selectLesson(item.id)} aria-label={`Open ${item.title} lesson`}>
-                  <span className="writing-video-mini"><small><Video /> VIDEO {String(item.number).padStart(2, "0")}</small><Icon /><i>Coming soon</i>{completed.includes(item.id) && <b><Check /> Practised</b>}</span>
+                  <span className="writing-video-mini"><small><Video /> VIDEO {String(item.number).padStart(2, "0")}</small><Icon /><i>{teacherVideoReady ? "Ready to watch" : "Coming soon"}</i>{completed.includes(item.id) && <b><Check /> Practised</b>}</span>
                   <span className="writing-card-copy"><small>Task {item.task} · {item.minutes} min</small><b>{item.title}</b><p>{item.subtitle}</p></span><ChevronRight />
                 </button>;
               })}
@@ -316,11 +322,13 @@ export function WritingClient({ userName }: { userName: string }) {
         <section className={`writing-studio task${lesson.task}`} id="writing-studio">
           <header className="writing-studio-heading"><span><small>SELECTED LESSON</small><b>Task {lesson.task} · Video {String(lesson.number).padStart(2, "0")}</b></span><h2>{lesson.title}</h2><p>{lesson.focus}</p></header>
 
-          <div className="writing-video-large">
+          <PublishedLessonVideo content={creatorContent} fallback={<div className="writing-video-large">
             <span className="future-video-label"><Video /> Your original video</span>
             <div><i><Video /></i><small>VIDEO PLACEHOLDER</small><h3>{lesson.shortTitle}: {lesson.subtitle}</h3><p>This lesson box is ready for your explanatory video when filming and editing are complete.</p><b><Clock3 /> Suggested lesson length: 8–12 minutes</b></div>
             <LessonVisual lesson={lesson} />
-          </div>
+          </div>} />
+
+          <PublishedLessonMaterials content={creatorContent} />
 
           <div className="writing-after-video"><span>AFTER THE VIDEO</span><i /><small>Vocabulary · structure · phrases · writing</small></div>
 

@@ -4,6 +4,7 @@ import test from "node:test";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
+const assessmentSchemaOnly = (source) => source.slice(0, source.indexOf("export const mediaAssets"));
 
 test("all requested routes are present", async () => {
   await Promise.all([
@@ -17,6 +18,7 @@ test("all requested routes are present", async () => {
     access(new URL("app/listening/page.tsx", root)),
     access(new URL("app/billing/page.tsx", root)),
     access(new URL("app/sponsored-access/page.tsx", root)),
+    access(new URL("app/creator/page.tsx", root)),
     access(new URL("app/api/me/route.ts", root)),
     access(new URL("app/api/assessment-results/route.ts", root)),
     access(new URL("app/api/study-plan/route.ts", root)),
@@ -29,6 +31,9 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/billing/portal/route.ts", root)),
     access(new URL("app/api/billing/webhook/route.ts", root)),
     access(new URL("app/api/sponsored-pass/route.ts", root)),
+    access(new URL("app/api/creator/lessons/route.ts", root)),
+    access(new URL("app/api/creator/media/route.ts", root)),
+    access(new URL("app/api/media/[id]/route.ts", root)),
   ]);
 });
 
@@ -63,7 +68,7 @@ test("only calculated metrics are persisted", async () => {
     read("drizzle/0001_safe_titania.sql"),
     read("app/api/assessment-results/route.ts"),
   ]);
-  for (const source of [schema, migration]) {
+  for (const source of [assessmentSchemaOnly(schema), migration]) {
     assert.doesNotMatch(source, /writing_text|writingText|audio|recording/i);
     assert.match(source, /writing_words|writingWords/);
     assert.match(source, /speaking_confidence|speakingConfidence/);
@@ -77,7 +82,7 @@ test("mock flow never persists writing text or audio", async () => {
     read("app/api/mock-results/route.ts"),
     read("app/mock-test/MockTestClient.tsx"),
   ]);
-  assert.doesNotMatch(schema, /writingText|writing_text|audio|recording/i);
+  assert.doesNotMatch(assessmentSchemaOnly(schema), /writingText|writing_text|audio|recording/i);
   assert.doesNotMatch(mockApi, /writingText|writing_text|audio|recording/i);
   assert.match(mockClient, /navigator\.mediaDevices\.getUserMedia/);
   assert.doesNotMatch(mockClient, /FormData|audioBlob|new Blob/);
@@ -193,7 +198,7 @@ test("speaking AI feedback is authenticated, bounded and saves only structured c
   assert.match(api, /saveAiPracticeAssessment/);
   assert.match(api, /Audio and transcript remain temporary/);
   assert.match(schema, /aiPracticeAssessments/);
-  assert.doesNotMatch(schema, /audio_blob|transcript|essay_text/);
+  assert.doesNotMatch(assessmentSchemaOnly(schema), /audio_blob|transcript|essay_text/);
 });
 
 test("speaking recorder uses temporary browser audio and sends it only for feedback", async () => {
@@ -238,7 +243,7 @@ test("writing feedback saves scores and coaching without retaining the essay", a
   assert.match(api, /json_schema/);
   assert.match(api, /saveAiPracticeAssessment/);
   assert.match(api, /essay itself is not stored/);
-  assert.doesNotMatch(schema, /essay_text|essayText|audio_blob|transcript/);
+  assert.doesNotMatch(assessmentSchemaOnly(schema), /essay_text|essayText|audio_blob|transcript/);
   assert.match(client, /fetch\("\/api\/writing-feedback"/);
   assert.doesNotMatch(client, /localStorage|sessionStorage/);
 });
@@ -314,6 +319,48 @@ test("lesson progress is user-owned and the dashboard adapts the connected journ
   assert.match(migration, /CREATE TABLE `lesson_progress`/);
   assert.match(migration, /lesson_progress_user_module_lesson_uidx/);
   assert.match(migration, /CREATE TABLE `ai_practice_assessments`/);
+});
+
+test("Creator Studio is private, persistent and controls every student module", async () => {
+  const [page, auth, lessonsApi, mediaApi, deliveryApi, schema, migration, hosting, dashboard, publishedContent] = await Promise.all([
+    read("app/creator/page.tsx"),
+    read("app/creator-auth.ts"),
+    read("app/api/creator/lessons/route.ts"),
+    read("app/api/creator/media/route.ts"),
+    read("app/api/media/[id]/route.ts"),
+    read("db/schema.ts"),
+    read("drizzle/0006_acoustic_butterfly.sql"),
+    read(".openai/hosting.json"),
+    read("app/dashboard/DashboardClient.tsx"),
+    read("app/PublishedLessonContent.tsx"),
+  ]);
+  assert.match(page, /requireCreatorUser\("\/creator"\)/);
+  assert.match(auth, /TEACHER_EMAILS/);
+  assert.match(auth, /isCreatorEmail/);
+  assert.match(lessonsApi, /getApiCreatorUser/);
+  assert.match(lessonsApi, /reorderCreatorLessons/);
+  assert.match(lessonsApi, /value === "published" \|\| value === "draft" \|\| value === "hidden"/);
+  assert.match(mediaApi, /getApiCreatorUser/);
+  assert.match(mediaApi, /getMediaBucket/);
+  assert.match(mediaApi, /100 \* 1024 \* 1024/);
+  assert.match(deliveryApi, /learningAccessAllowed/);
+  assert.match(deliveryApi, /lesson_status !== "published"/);
+  for (const source of [schema, migration]) {
+    assert.match(source, /creator_lessons/);
+    assert.match(source, /media_assets/);
+    assert.match(source, /vocabulary_json/);
+    assert.match(source, /answer_key_json/);
+  }
+  assert.match(hosting, /"r2": "MEDIA"/);
+  assert.match(dashboard, /Creator Studio/);
+  assert.match(publishedContent, /Teacher video/);
+  assert.match(publishedContent, /Lesson materials/);
+  for (const client of ["speaking", "writing", "reading", "listening"]) {
+    const source = await read(`app/${client}/${client[0].toUpperCase()}${client.slice(1)}Client.tsx`);
+    assert.match(source, /applyPublishedLessonOrder/);
+    assert.match(source, /PublishedLessonVideo/);
+    assert.match(source, /PublishedLessonMaterials/);
+  }
 });
 
 test("commercial access uses server-calculated discounts and signed payment events", async () => {

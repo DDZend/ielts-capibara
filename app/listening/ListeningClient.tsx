@@ -4,6 +4,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
+import type { StudentLessonContent } from "../../lib/creator-content";
+import { applyPublishedLessonOrder } from "../../lib/creator-content";
+import { PublishedLessonMaterials, PublishedLessonVideo } from "../PublishedLessonContent";
 import {
   ArrowLeft,
   ArrowRight,
@@ -313,7 +316,8 @@ const lessons: Lesson[] = [
 
 const normalise = (value: string) => value.trim().toLowerCase().replace(/[£$,]/g, "").replace(/[.]+$/, "").replace(/\s+/g, " ");
 
-export function ListeningClient({ userName }: { userName: string }) {
+export function ListeningClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+  const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
   const [filter, setFilter] = useState<FilterId>("all");
   const [activeId, setActiveId] = useState<LessonId>("form-completion");
   const [mode, setMode] = useState<"exam" | "study">("exam");
@@ -326,8 +330,9 @@ export function ListeningClient({ userName }: { userName: string }) {
   const [transcriptOpen, setTranscriptOpen] = useState<Partial<Record<LessonId, boolean>>>({});
   const [completed, setCompleted] = useState<LessonId[]>([]);
 
-  const lesson = lessons.find((item) => item.id === activeId) ?? lessons[0];
-  const activeIndex = lessons.findIndex((item) => item.id === lesson.id);
+  const lesson = courseLessons.find((item) => item.id === activeId) ?? courseLessons[0];
+  const activeIndex = courseLessons.findIndex((item) => item.id === lesson.id);
+  const creatorContent = creatorLessons.find((item) => item.lessonId === lesson.id && item.status === "published");
   const lessonAnswers = answers[lesson.id] ?? {};
   const hasSubmitted = Boolean(submitted[lesson.id]);
   const firstName = userName.split(/[\s@]/)[0] || "Student";
@@ -397,7 +402,7 @@ export function ListeningClient({ userName }: { userName: string }) {
     setMode("study");
   };
 
-  const goNext = () => selectLesson(lessons[(activeIndex + 1) % lessons.length].id);
+  const goNext = () => selectLesson(courseLessons[(activeIndex + 1) % courseLessons.length].id);
 
   return (
     <main className={`listening-shell ${lesson.part}`}>
@@ -432,20 +437,22 @@ export function ListeningClient({ userName }: { userName: string }) {
 
         <section className="listening-library">
           <header><div><span className="listening-section-label">YOUR LISTENING LIBRARY</span><h2>Twelve focused video lessons</h2><p>Each lesson has a reserved space for your explanatory video, a production-ready recording brief and an interactive audio task.</p></div><div className="listening-filters" aria-label="Filter lessons">{(["all", "part1", "part2", "part3", "part4"] as FilterId[]).map((id) => <button key={id} className={filter === id ? "active" : ""} onClick={() => setFilter(id)}>{id === "all" ? "All 12" : parts.find((part) => part.id === id)?.label}</button>)}</div></header>
-          {visibleParts.map((part) => { const partLessons = lessons.filter((item) => item.part === part.id); return <section className={`listening-part-section ${part.id}`} key={part.id}>
+          {visibleParts.map((part) => { const partLessons = courseLessons.filter((item) => item.part === part.id); return <section className={`listening-part-section ${part.id}`} key={part.id}>
             <div className="listening-part-heading"><span><small>{part.label}</small><b>{part.title}</b></span><p>{part.description}</p><em>3 lessons</em></div>
-            <div className="listening-lesson-grid">{partLessons.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => selectLesson(item.id)} className={`listening-lesson-card ${activeId === item.id ? "active" : ""} ${completed.includes(item.id) ? "complete" : ""}`}><span className="listening-video-mini"><small><Video /> LESSON {String(item.number).padStart(2, "0")}</small><Icon /><i>Video coming soon</i>{completed.includes(item.id) && <b><Check /> Practised</b>}</span><span className="listening-card-copy"><small>{part.label}</small><b>{item.shortTitle}</b><p>{item.subtitle}</p></span><ChevronRight /></button>; })}</div>
+            <div className="listening-lesson-grid">{partLessons.map((item) => { const Icon = item.icon; const teacherVideoReady = Boolean(creatorLessons.find((content) => content.lessonId === item.id)?.videoUrl); return <button key={item.id} onClick={() => selectLesson(item.id)} className={`listening-lesson-card ${activeId === item.id ? "active" : ""} ${completed.includes(item.id) ? "complete" : ""}`}><span className="listening-video-mini"><small><Video /> LESSON {String(item.number).padStart(2, "0")}</small><Icon /><i>{teacherVideoReady ? "Ready to watch" : "Video coming soon"}</i>{completed.includes(item.id) && <b><Check /> Practised</b>}</span><span className="listening-card-copy"><small>{part.label}</small><b>{item.shortTitle}</b><p>{item.subtitle}</p></span><ChevronRight /></button>; })}</div>
           </section>; })}
         </section>
 
         <section className={`listening-studio ${lesson.part}`} id="listening-studio">
           <header className="listening-studio-heading"><span><small>LESSON {String(lesson.number).padStart(2, "0")}</small><b>{parts.find((part) => part.id === lesson.part)?.label}</b></span><h2>{lesson.title}</h2><p>{lesson.subtitle}. Watch the strategy lesson, then practise in exam mode before opening the evidence.</p></header>
 
-          <div className="listening-video-large">
+          <PublishedLessonVideo content={creatorContent} fallback={<div className="listening-video-large">
             <span className="listening-future-label"><Video /> Reserved for your original video</span>
             <div><i><Video /></i><small>EXPLANATORY VIDEO</small><h3>{lesson.title}: hear the signal</h3><p>{lesson.videoFocus}</p><b><Clock3 /> Suggested video: 6-9 minutes</b></div>
             <div className="listening-video-art"><Headphones /><span>{[1,2,3,4,5,6,7,8,9,10,11].map((bar) => <i key={bar} />)}</span></div>
-          </div>
+          </div>} />
+
+          <PublishedLessonMaterials content={creatorContent} />
 
           <div className="listening-after-video"><span>AFTER THE VIDEO</span><i /><small>Predict, listen once, answer, then replay the evidence.</small></div>
 
@@ -457,7 +464,7 @@ export function ListeningClient({ userName }: { userName: string }) {
 
           <section className="listening-practice-card">
             <header><span><Headphones /></span><div><small>GUIDED AUDIO PRACTICE</small><h3>{lesson.context}</h3></div>{lesson.source && <a href={lesson.source.url} target="_blank" rel="noreferrer">Facts adapted from {lesson.source.name} <ExternalLink /></a>}</header>
-            <div className="listening-production-note"><Mic2 /><div><small>ORIGINAL RECORDING SLOT</small><b>{lesson.speakers} · {lesson.accents} · target {lesson.targetDuration}</b><p>The playable narration below is a temporary device-voice demo. Replace it with your human-recorded WAV or MP3 without changing the lesson.</p></div></div>
+            {!creatorContent?.audioUrl && <><div className="listening-production-note"><Mic2 /><div><small>ORIGINAL RECORDING SLOT</small><b>{lesson.speakers} · {lesson.accents} · target {lesson.targetDuration}</b><p>The playable narration below is a temporary device-voice demo. Replace it with your human-recorded WAV or MP3 without changing the lesson.</p></div></div>
 
             <div className={`listening-player ${playing ? "playing" : ""}`}>
               <div className="listening-mode-switch"><button className={mode === "exam" ? "active" : ""} onClick={() => { stopAudio(); setMode("exam"); }}><Target /> Exam mode</button><button className={mode === "study" ? "active" : ""} onClick={() => { stopAudio(); setMode("study"); }}><BookOpen /> Study mode</button></div>
@@ -467,7 +474,7 @@ export function ListeningClient({ userName }: { userName: string }) {
                 <div className="listening-wave" aria-hidden="true">{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20].map((bar) => <i key={bar} />)}</div>
               </div>
               <footer><span><Volume2 /> {mode === "exam" ? "Pausing and replay are disabled after starting." : "Replay and speed controls are available."}</span>{mode === "study" && <div>{[0.85,1,1.15].map((rate) => <button key={rate} onClick={() => setSpeed(rate)} className={speed === rate ? "active" : ""}>{rate}x</button>)}</div>}</footer>
-            </div>
+            </div></>}
 
             <div className="listening-questions">
               <header><span><ListChecks /> QUESTIONS 1-3</span><p>Answer every question before checking.</p></header>
@@ -483,7 +490,7 @@ export function ListeningClient({ userName }: { userName: string }) {
             {hasSubmitted && <div className="listening-transcript"><button onClick={() => setTranscriptOpen((current) => ({ ...current, [lesson.id]: !current[lesson.id] }))}>{transcriptOpen[lesson.id] ? <EyeOff /> : <Eye />}{transcriptOpen[lesson.id] ? "Hide transcript" : "Reveal transcript and replay evidence"}</button>{transcriptOpen[lesson.id] && <div><span><CircleAlert /> Use the transcript only after your first attempt. Notice corrections, signposts and paraphrases.</span>{lesson.segments.map((segment, index) => <p key={`${segment.speaker}-${index}`}><b>{segment.speaker}</b>{segment.text}</p>)}</div>}</div>}
           </section>
 
-          <footer className="listening-next"><span><small>NEXT LESSON</small><b>{lessons[(activeIndex + 1) % lessons.length].title}</b></span><button className="button listening-primary" onClick={goNext}>Continue <ArrowRight /></button></footer>
+          <footer className="listening-next"><span><small>NEXT LESSON</small><b>{courseLessons[(activeIndex + 1) % courseLessons.length].title}</b></span><button className="button listening-primary" onClick={goNext}>Continue <ArrowRight /></button></footer>
         </section>
 
         <section className="listening-course-note"><img src="/capi-profile.png" alt="" /><div><small>RECORDING ROADMAP</small><h2>Your human audio can replace every demo cleanly</h2><p>Keep a WAV master, export an MP3 for the lesson, and preserve the answer order and transcript wording. Use real speakers for the final course rather than asking one person to imitate several accents.</p></div><a href="https://ielts.org/organisations/ielts-for-organisations/test-types/ielts-academic-test/academic-test-format-in-detail" target="_blank" rel="noreferrer">Official format <ExternalLink /></a></section>

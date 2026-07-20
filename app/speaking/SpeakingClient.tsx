@@ -2,8 +2,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
+import type { StudentLessonContent } from "../../lib/creator-content";
+import { applyPublishedLessonOrder } from "../../lib/creator-content";
+import { PublishedLessonMaterials, PublishedLessonVideo } from "../PublishedLessonContent";
 import {
   ArrowLeft,
   ArrowRight,
@@ -149,7 +152,8 @@ const lessons: Lesson[] = [
 
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-export function SpeakingClient({ userName }: { userName: string }) {
+export function SpeakingClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+  const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
   const [activeId, setActiveId] = useState<PartId>("part1");
   const [quizChoices, setQuizChoices] = useState<Partial<Record<PartId, string>>>({});
   const [checkedQuizzes, setCheckedQuizzes] = useState<Partial<Record<PartId, boolean>>>({});
@@ -170,9 +174,10 @@ export function SpeakingClient({ userName }: { userName: string }) {
   const limitRef = useRef<number | null>(null);
   const audioUrlRef = useRef<string | null>(null);
 
-  const lesson = lessons.find((item) => item.id === activeId) ?? lessons[0];
+  const lesson = courseLessons.find((item) => item.id === activeId) ?? courseLessons[0];
+  const creatorContent = creatorLessons.find((item) => item.lessonId === lesson.id && item.status === "published");
   const completedLessons = new Set<PartId>(savedCompleted);
-  for (const item of lessons) {
+  for (const item of courseLessons) {
     if (checkedQuizzes[item.id] && quizChoices[item.id] === item.vocabulary.answer) completedLessons.add(item.id);
   }
 
@@ -342,7 +347,7 @@ export function SpeakingClient({ userName }: { userName: string }) {
           <span className="speaking-section-label">COURSE ROUTE</span>
           <h2>Master all three parts</h2>
           <nav aria-label="Speaking lessons">
-            {lessons.map((item, index) => {
+            {courseLessons.map((item, index) => {
               const complete = completedLessons.has(item.id);
               return <button key={item.id} className={activeId === item.id ? "active" : ""} onClick={() => chooseLesson(item.id)} aria-current={activeId === item.id ? "step" : undefined}>
                 <i>{complete ? <Check /> : index + 1}</i><span><small>{item.part} · {item.timing}</small><b>{item.title}</b></span><ChevronRight />
@@ -363,12 +368,14 @@ export function SpeakingClient({ userName }: { userName: string }) {
           </div>
 
           <article className="speaking-video-card">
-            <div className="speaking-video-poster speaking-video-placeholder" aria-label={`Reserved video space: ${lesson.videoTitle}`}>
+            <PublishedLessonVideo content={creatorContent} fallback={<div className="speaking-video-poster speaking-video-placeholder" aria-label={`Reserved video space: ${lesson.videoTitle}`}>
               <div><span><Video /> Your video lesson</span><h3>{lesson.videoTitle}</h3><p>{lesson.videoFocus}</p><b className="speaking-play"><Video /> Video coming soon</b></div>
               <img src="/capi-official.png" alt="Capi Coach beside the future lesson video" />
-            </div>
-            <footer><Clock3 /> This space is ready for your original explanatory video when filming is complete.</footer>
+            </div>} />
+            <footer><Clock3 /> {creatorContent?.videoUrl ? "Watch the teacher lesson, then complete the three activities." : "This space is ready for your original explanatory video when filming is complete."}</footer>
           </article>
+
+          <PublishedLessonMaterials content={creatorContent} />
 
           <div className="speaking-after-video"><span>AFTER THE VIDEO</span><i /><small>Complete the three short tasks below</small></div>
 

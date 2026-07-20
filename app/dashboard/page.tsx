@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireLearningAccess } from "../learning-access";
 import { getDashboardLearningData, getLatestAssessmentForEmail } from "../../db";
 import { DashboardClient } from "./DashboardClient";
+import { isCreatorEmail } from "../creator-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -50,5 +51,5 @@ export default async function DashboardPage() {
     speakingConfidence: mock.speakingConfidence,
     createdAt: mock.createdAt,
   }));
-  return <DashboardClient userName={user.displayName} latest={latest} initialTasks={learning.tasks} recentTasks={learning.recent} initialStats={learning.stats} mocks={mocks} adaptivePriority={learning.adaptivePriority} moduleProgress={learning.moduleProgress} assessmentHistory={learning.assessmentHistory} weeklyReport={learning.weeklyReport} />;
+  return <DashboardClient userName={user.displayName} isCreator={isCreatorEmail(user.email)} latest={latest} initialTasks={learning.tasks} recentTasks={learning.recent} initialStats={learning.stats} mocks={mocks} adaptivePriority={learning.adaptivePriority} moduleProgress={learning.moduleProgress} assessmentHistory={learning.assessmentHistory} weeklyReport={learning.weeklyReport} />;
 }

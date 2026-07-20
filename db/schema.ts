@@ -237,3 +237,49 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type PaymentHistory = typeof paymentHistory.$inferSelect;
 export type SponsoredAccessPass = typeof sponsoredAccessPasses.$inferSelect;
 export type PaidAccessPass = typeof paidAccessPasses.$inferSelect;
+
+export const mediaAssets = sqliteTable(
+  "media_assets",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    ownerEmail: text("owner_email").notNull(),
+    r2Key: text("r2_key").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    kind: text("kind").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("media_assets_r2_key_uidx").on(table.r2Key),
+    index("media_assets_owner_created_at_idx").on(table.ownerEmail, table.createdAt),
+  ],
+);
+
+export const creatorLessons = sqliteTable(
+  "creator_lessons",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    module: text("module").notNull(),
+    lessonId: text("lesson_id").notNull(),
+    title: text("title").notNull(),
+    position: integer("position").notNull(),
+    status: text("status").notNull().default("published"),
+    videoMediaId: integer("video_media_id"),
+    audioMediaId: integer("audio_media_id"),
+    vocabularyJson: text("vocabulary_json").notNull().default("[]"),
+    exercisesJson: text("exercises_json").notNull().default("[]"),
+    transcript: text("transcript").notNull().default(""),
+    answerKeyJson: text("answer_key_json").notNull().default("[]"),
+    updatedBy: text("updated_by").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("creator_lessons_module_lesson_uidx").on(table.module, table.lessonId),
+    index("creator_lessons_module_position_idx").on(table.module, table.position),
+  ],
+);
+
+export type MediaAsset = typeof mediaAssets.$inferSelect;
+export type CreatorLesson = typeof creatorLessons.$inferSelect;

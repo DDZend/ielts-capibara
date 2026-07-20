@@ -43,6 +43,13 @@
       "when": 1784541667758,
       "tag": "0005_brown_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784542860270,
+      "tag": "0006_acoustic_butterfly",
+      "breakpoints": true
     }
   ]
 }

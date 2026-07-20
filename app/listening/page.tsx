@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { requireLearningAccess } from "../learning-access";
 import { ListeningClient } from "./ListeningClient";
+import { getStudentCreatorLessons } from "../../db/creator";
+import { CourseUnavailable } from "../CourseUnavailable";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +13,7 @@ export const metadata: Metadata = {
 
 export default async function ListeningPage() {
   const user = await requireLearningAccess("/listening");
-  return <ListeningClient userName={user.displayName} />;
+  const creatorLessons = await getStudentCreatorLessons("Listening");
+  if (creatorLessons.length && !creatorLessons.some((lesson) => lesson.status === "published")) return <CourseUnavailable module="Listening" />;
+  return <ListeningClient userName={user.displayName} creatorLessons={creatorLessons} />;
 }

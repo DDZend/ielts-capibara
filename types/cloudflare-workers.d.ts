@@ -23,6 +23,24 @@ interface D1Database {
   dump(): Promise<ArrayBuffer>;
 }
 
+interface R2ObjectBody {
+  body: ReadableStream<Uint8Array>;
+  size: number;
+  etag: string;
+  httpEtag: string;
+  httpMetadata?: { contentType?: string };
+}
+
+interface R2Bucket {
+  put(
+    key: string,
+    value: ArrayBuffer | ReadableStream | Blob,
+    options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> },
+  ): Promise<unknown>;
+  get(key: string): Promise<R2ObjectBody | null>;
+  delete(key: string): Promise<void>;
+}
+
 declare module "cloudflare:workers" {
-  export const env: { DB: D1Database };
+  export const env: { DB: D1Database; MEDIA?: R2Bucket; TEACHER_EMAILS?: string };
 }

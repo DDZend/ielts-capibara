@@ -4,6 +4,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { loadLessonProgress, saveLessonProgress } from "../../lib/lesson-progress-client";
+import type { StudentLessonContent } from "../../lib/creator-content";
+import { applyPublishedLessonOrder } from "../../lib/creator-content";
+import { PublishedLessonMaterials, PublishedLessonVideo } from "../PublishedLessonContent";
 import {
   ArrowLeft,
   ArrowRight,
@@ -336,7 +339,8 @@ const lessons: ReadingLesson[] = [
   },
 ];
 
-export function ReadingClient({ userName }: { userName: string }) {
+export function ReadingClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+  const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
   const [filter, setFilter] = useState<FilterId>("all");
   const [activeId, setActiveId] = useState<LessonId>("multiple-choice");
   const [choices, setChoices] = useState<Partial<Record<LessonId, string>>>({});
@@ -344,8 +348,9 @@ export function ReadingClient({ userName }: { userName: string }) {
   const [evidenceOpen, setEvidenceOpen] = useState<Partial<Record<LessonId, boolean>>>({});
   const [completed, setCompleted] = useState<LessonId[]>([]);
 
-  const lesson = lessons.find((item) => item.id === activeId) ?? lessons[0];
-  const activeIndex = lessons.findIndex((item) => item.id === lesson.id);
+  const lesson = courseLessons.find((item) => item.id === activeId) ?? courseLessons[0];
+  const activeIndex = courseLessons.findIndex((item) => item.id === lesson.id);
+  const creatorContent = creatorLessons.find((item) => item.lessonId === lesson.id && item.status === "published");
   const selected = choices[lesson.id];
   const isChecked = Boolean(checked[lesson.id]);
   const isCorrect = isChecked && selected === lesson.answer;
@@ -370,7 +375,7 @@ export function ReadingClient({ userName }: { userName: string }) {
     void saveLessonProgress({ module: "Reading", lessonId: lesson.id, lessonTitle: lesson.title, score: correct ? 100 : 0, correctCount: Number(correct), totalCount: 1 });
   };
 
-  const goNext = () => selectLesson(lessons[(activeIndex + 1) % lessons.length].id);
+  const goNext = () => selectLesson(courseLessons[(activeIndex + 1) % courseLessons.length].id);
 
   return (
     <main className={`reading-shell ${lesson.family}`}>
@@ -413,12 +418,12 @@ export function ReadingClient({ userName }: { userName: string }) {
           </header>
 
           {visibleFamilies.map((family) => {
-            const familyLessons = lessons.filter((item) => item.family === family.id);
+            const familyLessons = courseLessons.filter((item) => item.family === family.id);
             return <section className={`reading-family-section ${family.id}`} key={family.id}>
               <div className="reading-family-heading"><span><small>{family.label}</small><b>{family.title}</b></span><p>{family.description}</p><em>{familyLessons.length} {familyLessons.length === 1 ? "lesson" : "lessons"}</em></div>
               <div className="reading-lesson-grid">
-                {familyLessons.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => selectLesson(item.id)} className={`reading-lesson-card ${activeId === item.id ? "active" : ""} ${completed.includes(item.id) ? "complete" : ""}`}>
-                  <span className="reading-video-mini"><small><Video /> LESSON {String(item.number).padStart(2, "0")}</small><Icon /><i>Video coming soon</i>{completed.includes(item.id) && <b><Check /> Practised</b>}</span>
+                {familyLessons.map((item) => { const Icon = item.icon; const teacherVideoReady = Boolean(creatorLessons.find((content) => content.lessonId === item.id)?.videoUrl); return <button key={item.id} onClick={() => selectLesson(item.id)} className={`reading-lesson-card ${activeId === item.id ? "active" : ""} ${completed.includes(item.id) ? "complete" : ""}`}>
+                  <span className="reading-video-mini"><small><Video /> LESSON {String(item.number).padStart(2, "0")}</small><Icon /><i>{teacherVideoReady ? "Ready to watch" : "Video coming soon"}</i>{completed.includes(item.id) && <b><Check /> Practised</b>}</span>
                   <span className="reading-card-copy"><small>{family.title}</small><b>{item.shortTitle}</b><p>{item.subtitle}</p></span><ChevronRight />
                 </button>; })}
               </div>
@@ -429,11 +434,13 @@ export function ReadingClient({ userName }: { userName: string }) {
         <section className={`reading-studio ${lesson.family}`} id="reading-studio">
           <header className="reading-studio-heading"><span><small>LESSON {String(lesson.number).padStart(2, "0")}</small><b>{families.find((family) => family.id === lesson.family)?.title}</b></span><h2>{lesson.title}</h2><p>{lesson.subtitle}. Learn the method, then apply it to a short source-based practice text.</p></header>
 
-          <div className="reading-video-large">
+          <PublishedLessonVideo content={creatorContent} fallback={<div className="reading-video-large">
             <span className="reading-future-label"><Video /> Reserved for your original video</span>
             <div><i><Video /></i><small>EXPLANATORY VIDEO</small><h3>{lesson.title}: the evidence method</h3><p>Your future lesson can demonstrate the three steps below and work through an IELTS-style example.</p><b><Clock3 /> Suggested length: 6-10 minutes</b></div>
             <div className="reading-video-art"><LessonIcon /><span><i /><i /><i /><i /></span></div>
-          </div>
+          </div>} />
+
+          <PublishedLessonMaterials content={creatorContent} />
 
           <div className="reading-after-video"><span>AFTER THE VIDEO</span><i /><small>Learn the method, read the source-based text, then check your evidence.</small></div>
 
@@ -465,7 +472,7 @@ export function ReadingClient({ userName }: { userName: string }) {
             </div>
           </section>
 
-          <footer className="reading-next"><span><small>NEXT LESSON</small><b>{lessons[(activeIndex + 1) % lessons.length].title}</b></span><button className="button reading-primary" onClick={goNext}>Continue <ArrowRight /></button></footer>
+          <footer className="reading-next"><span><small>NEXT LESSON</small><b>{courseLessons[(activeIndex + 1) % courseLessons.length].title}</b></span><button className="button reading-primary" onClick={goNext}>Continue <ArrowRight /></button></footer>
         </section>
 
         <section className="reading-official-note"><img src="/capi-profile.png" alt="" /><div><small>COURSE NOTE</small><h2>Built around the official IELTS task format</h2><p>IELTS describes Academic Reading as three sections using texts selected from books, journals, magazines and newspapers. Use these shorter lessons to master the strategy, then build stamina with full-length timed practice.</p></div><a href="https://ielts.org/take-a-test/test-types/ielts-academic-test/ielts-academic-format-reading" target="_blank" rel="noreferrer">View the official format <ExternalLink /></a></section>

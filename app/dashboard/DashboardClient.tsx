@@ -78,6 +78,7 @@ type WeeklyReport = {
 
 type DashboardClientProps = {
   userName: string;
+  isCreator: boolean;
   latest: SavedAssessment | null;
   initialTasks: DashboardTask[];
   recentTasks: DashboardTask[];
@@ -107,7 +108,7 @@ const discountTiers = [
   { percent: 15, coins: 1500 },
 ] as const;
 
-export function DashboardClient({ userName, latest, initialTasks, recentTasks, initialStats, mocks, adaptivePriority, moduleProgress, assessmentHistory, weeklyReport }: DashboardClientProps) {
+export function DashboardClient({ userName, isCreator, latest, initialTasks, recentTasks, initialStats, mocks, adaptivePriority, moduleProgress, assessmentHistory, weeklyReport }: DashboardClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [coinsOpen, setCoinsOpen] = useState(false);
@@ -232,6 +233,7 @@ export function DashboardClient({ userName, latest, initialTasks, recentTasks, i
           <a className="nav-item" href="#live-class" onClick={() => setSidebarOpen(false)}><span><Video /></span>Live classes<span className="nav-badge">2</span></a>
           <a className="nav-item" href="#study-calendar" onClick={() => setSidebarOpen(false)}><span><CalendarDays /></span>Study calendar</a>
           <Link className="nav-item" href="/billing" onClick={() => setSidebarOpen(false)}><span><CreditCard /></span>Membership & billing<ChevronRight /></Link>
+          {isCreator && <Link className="nav-item creator-nav-item" href="/creator" onClick={() => setSidebarOpen(false)}><span><Sparkles /></span>Creator Studio<ChevronRight /></Link>}
           <div className="nav-line" />
           <button className="nav-item" onClick={() => { setTargetOpen(true); setSidebarOpen(false); document.getElementById("dashboard-top")?.scrollIntoView(); }}><span><Settings /></span>Target settings</button>
         </nav>
