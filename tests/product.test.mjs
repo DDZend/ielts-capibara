@@ -317,7 +317,7 @@ test("lesson progress is user-owned and the dashboard adapts the connected journ
 });
 
 test("commercial access uses server-calculated discounts and signed payment events", async () => {
-  const [config, checkout, webhook, portal, claim, access, schema, migration, billing] = await Promise.all([
+  const [config, checkout, webhook, portal, claim, access, schema, migration, passMigration, billing] = await Promise.all([
     read("lib/billing-config.ts"),
     read("app/api/billing/checkout/route.ts"),
     read("app/api/billing/webhook/route.ts"),
@@ -326,22 +326,32 @@ test("commercial access uses server-calculated discounts and signed payment even
     read("app/learning-access.ts"),
     read("db/schema.ts"),
     read("drizzle/0004_complex_morlocks.sql"),
+    read("drizzle/0005_brown_vapor.sql"),
     read("app/billing/BillingClient.tsx"),
   ]);
   assert.match(config, /BILLING_CURRENCY = "kzt"/);
-  assert.match(config, /one_month:[\s\S]*?intervalCount: 1,[\s\S]*?amount: 6_000_000/);
-  assert.match(config, /three_months:[\s\S]*?intervalCount: 3,[\s\S]*?amount: 15_000_000/);
-  assert.match(config, /six_months:[\s\S]*?intervalCount: 6,[\s\S]*?amount: 27_000_000/);
+  assert.match(config, /starter_week:[\s\S]*?amount: 1_000_000[\s\S]*?accessDays: 7/);
+  const expectedPlans = {
+    silver: [["silver_month", 4_000_000], ["silver_3_months", 11_000_000], ["silver_6_months", 20_000_000]],
+    gold: [["gold_month", 6_000_000], ["gold_3_months", 15_000_000], ["gold_6_months", 27_000_000]],
+    platinum: [["platinum_month", 9_000_000], ["platinum_3_months", 24_000_000], ["platinum_6_months", 42_000_000]],
+  };
+  for (const plans of Object.values(expectedPlans)) for (const [id, amount] of plans) assert.match(config, new RegExp(`${id}:[\\s\\S]*?amount: ${amount.toLocaleString("en-US").replaceAll(",", "_")}`));
   for (const percent of [5, 10, 15]) assert.match(config, new RegExp(`percent: ${percent}`));
   assert.match(checkout, /const summary = await getBillingSummary\(user\.email\)/);
   assert.match(checkout, /discountedAmount\(plan\.amount, summary\.discountPercent\)/);
   assert.match(checkout, /mode: "subscription"/);
+  assert.match(checkout, /mode: "payment"/);
   assert.match(checkout, /interval_count: plan\.intervalCount/);
+  assert.match(checkout, /stripe\.coupons\.create/);
+  assert.match(checkout, /Starter Pass upgrade credit/);
   assert.match(checkout, /subscription_data: \{ metadata \}/);
   assert.doesNotMatch(checkout, /body\.amount|body\.discount/);
   assert.match(webhook, /const rawBody = await request\.text\(\)/);
   assert.match(webhook, /constructEventAsync\(rawBody, signature, webhookSecret\)/);
   assert.match(webhook, /ON CONFLICT\(stripe_event_id\) DO NOTHING/);
+  assert.match(webhook, /INSERT INTO paid_access_passes/);
+  assert.match(webhook, /checkout\.session\.expired/);
   assert.match(portal, /stripe\.billingPortal\.sessions\.create/);
   assert.match(claim, /WHERE pass_code = \? AND status = 'available' AND recipient_email IS NULL/);
   assert.match(claim, /pass\.donor_email === user\.email/);
@@ -352,9 +362,10 @@ test("commercial access uses server-calculated discounts and signed payment even
     assert.match(source, /payment_history/);
     assert.match(source, /sponsored_access_passes/);
   }
+  for (const source of [schema, passMigration]) assert.match(source, /paid_access_passes/);
   assert.match(billing, /Payment history/);
   assert.match(billing, /Your sponsored passes/);
-  assert.match(billing, /choose one, three or six months/);
-  assert.match(billing, /Object\.keys\(BILLING_PLANS\)/);
+  for (const name of ["7-DAY STARTER PASS", "Silver", "Gold", "Platinum"]) assert.match(billing, new RegExp(name));
+  assert.match(billing, /BILLING_PACKAGES\.map/);
   assert.match(billing, /Checkout coming soon/);
 });

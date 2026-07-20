@@ -191,6 +191,22 @@ export function ensureAppSchema() {
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS sponsored_access_passes_code_uidx ON sponsored_access_passes (pass_code)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS sponsored_access_passes_donor_created_at_idx ON sponsored_access_passes (donor_email, created_at)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS sponsored_access_passes_recipient_expires_at_idx ON sponsored_access_passes (recipient_email, expires_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS paid_access_passes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_email TEXT NOT NULL,
+        stripe_checkout_session_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        amount_paid INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        starts_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        credit_amount INTEGER NOT NULL,
+        credit_reserved_session_id TEXT,
+        credit_used_at TEXT,
+        created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS paid_access_passes_checkout_session_uidx ON paid_access_passes (stripe_checkout_session_id)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS paid_access_passes_user_expires_at_idx ON paid_access_passes (user_email, expires_at)"),
     ])
     .then(() => undefined);
   return schemaReady;
@@ -415,6 +431,9 @@ export type BillingSummary = {
     hasCustomer: boolean;
   } | null;
   activePass: { expiresAt: string; accessHours: number } | null;
+  starterPass: { expiresAt: string; accessDays: number } | null;
+  starterCredit: { passId: number; amount: number } | null;
+  hasStarterPurchase: boolean;
   sponsoredPasses: Array<{
     id: number;
     passCode: string;
@@ -477,9 +496,12 @@ export async function getBillingSummary(email: string): Promise<BillingSummary> 
     WHERE recipient_email = ? AND status = 'claimed' AND expires_at IS NOT NULL AND expires_at <= ?
   `).bind(email, now).run();
 
-  const [subscription, activePass, sponsoredResult, paymentsResult, coinResult] = await Promise.all([
+  const [subscription, activePass, starterPass, starterCredit, starterPurchase, sponsoredResult, paymentsResult, coinResult] = await Promise.all([
     getD1().prepare(`SELECT plan_interval, status, discount_percent, current_period_end, cancel_at_period_end, stripe_customer_id FROM subscriptions WHERE user_email = ? LIMIT 1`).bind(email).first<SubscriptionRow>(),
     getD1().prepare(`SELECT access_hours, expires_at FROM sponsored_access_passes WHERE recipient_email = ? AND status = 'claimed' AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`).bind(email, now).first<{ access_hours: number; expires_at: string }>(),
+    getD1().prepare(`SELECT expires_at FROM paid_access_passes WHERE user_email = ? AND status = 'active' AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`).bind(email, now).first<{ expires_at: string }>(),
+    getD1().prepare(`SELECT id, credit_amount FROM paid_access_passes WHERE user_email = ? AND credit_used_at IS NULL AND credit_reserved_session_id IS NULL ORDER BY created_at DESC LIMIT 1`).bind(email).first<{ id: number; credit_amount: number }>(),
+    getD1().prepare(`SELECT 1 AS purchased FROM paid_access_passes WHERE user_email = ? LIMIT 1`).bind(email).first<{ purchased: number }>(),
     getD1().prepare(`SELECT id, pass_code, coins, access_hours, recipient_email, status, created_at, claimed_at, expires_at FROM sponsored_access_passes WHERE donor_email = ? ORDER BY created_at DESC LIMIT 25`).bind(email).all<SponsoredPassRow>(),
     getD1().prepare(`SELECT id, amount_paid, currency, status, plan_interval, discount_percent, paid_at FROM payment_history WHERE user_email = ? ORDER BY paid_at DESC LIMIT 50`).bind(email).all<PaymentRow>(),
     getD1().prepare(`SELECT
@@ -504,6 +526,9 @@ export async function getBillingSummary(email: string): Promise<BillingSummary> 
       hasCustomer: Boolean(subscription.stripe_customer_id),
     } : null,
     activePass: activePass ? { expiresAt: activePass.expires_at, accessHours: activePass.access_hours } : null,
+    starterPass: starterPass ? { expiresAt: starterPass.expires_at, accessDays: 7 } : null,
+    starterCredit: starterCredit ? { passId: starterCredit.id, amount: starterCredit.credit_amount } : null,
+    hasStarterPurchase: Boolean(starterPurchase?.purchased),
     sponsoredPasses: (sponsoredResult.results ?? []).map((pass) => ({
       id: pass.id,
       passCode: pass.pass_code,
@@ -534,7 +559,9 @@ export async function hasLearningAccess(email: string) {
     SELECT 1 FROM subscriptions WHERE user_email = ? AND status IN ('active', 'trialing')
   ) OR EXISTS (
     SELECT 1 FROM sponsored_access_passes WHERE recipient_email = ? AND status = 'claimed' AND expires_at > ?
-  ) LIMIT 1`).bind(email, email, now).first<{ allowed: number }>();
+  ) OR EXISTS (
+    SELECT 1 FROM paid_access_passes WHERE user_email = ? AND status = 'active' AND expires_at > ?
+  ) LIMIT 1`).bind(email, email, now, email, now).first<{ allowed: number }>();
   return Boolean(result?.allowed);
 }
 

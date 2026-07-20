@@ -3,9 +3,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, Check, CheckCircle2, Clock3, Copy, CreditCard, ExternalLink, Gift, History, LockKeyhole, ReceiptText, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, Check, CheckCircle2, Clock3, Copy, CreditCard, Crown, ExternalLink, Gift, GraduationCap, History, LockKeyhole, MonitorPlay, ReceiptText, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
 import type { BillingSummary } from "../../db";
-import { BILLING_PLANS, billingPlanLabel, discountedAmount, formatCurrency } from "../../lib/billing-config";
+import { BILLING_PACKAGES, BILLING_PLANS, billingPlanLabel, discountedAmount, formatCurrency, type BillingPlanId, type BillingTier } from "../../lib/billing-config";
 
 type BillingClientProps = {
   userName: string;
@@ -20,8 +20,9 @@ export function BillingClient({ userName, summary, checkoutConfigured, paywallAc
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [selectedPlans, setSelectedPlans] = useState<Record<BillingTier, BillingPlanId>>({ silver: "silver_month", gold: "gold_3_months", platinum: "platinum_month" });
   const activeSubscription = summary.subscription && ["active", "trialing"].includes(summary.subscription.status);
-  const hasAccess = Boolean(activeSubscription || summary.activePass || !paywallActive);
+  const hasAccess = Boolean(activeSubscription || summary.activePass || summary.starterPass || !paywallActive);
   const firstName = userName.split(/[\s@]/)[0] || "Student";
 
   const openSession = async (endpoint: string, payload?: object) => {
@@ -55,17 +56,18 @@ export function BillingClient({ userName, summary, checkoutConfigured, paywallAc
         <div>
           <span className="billing-kicker"><Sparkles /> Membership & sponsored access</span>
           <h1>Choose your path.<br /><em>Keep every achievement.</em></h1>
-          <p>{firstName}, choose one, three or six months of access to all four learning modules, saved progress, AI feedback and weekend mock comparisons.</p>
-          <div className="billing-access-chip"><BadgeCheck /><span><small>Your access</small><b>{hasAccess ? activeSubscription ? "Subscription active" : summary.activePass ? "Sponsored pass active" : "Open during launch" : "Membership needed"}</b></span></div>
+          <p>{firstName}, start with seven days of platform access or choose self-study, guided group learning, or personal teacher coaching.</p>
+          <div className="billing-access-chip"><BadgeCheck /><span><small>Your access</small><b>{hasAccess ? activeSubscription ? "Membership active" : summary.starterPass ? "Starter Pass active" : summary.activePass ? "Sponsored pass active" : "Open during launch" : "Membership needed"}</b></span></div>
         </div>
         <div className="billing-hero-art"><span><Star fill="currentColor" /><b>{summary.earnedCoins.toLocaleString()}</b><small>lifetime-earned coins</small></span><img src="/capi-plan.png" alt="Capi Coach planning a study membership" /></div>
       </section>
 
       <div className="billing-page">
         {accessRequired && <div className="billing-alert warning"><LockKeyhole /><span><b>Choose access to continue learning</b><small>Your dashboard and assessment remain available while you choose a subscription or claim a sponsored pass.</small></span></div>}
-        {checkoutResult === "success" && <div className="billing-alert success"><CheckCircle2 /><span><b>Checkout completed</b><small>Stripe is confirming your subscription. This page will show the final status as soon as its signed event arrives.</small></span></div>}
+        {checkoutResult === "success" && <div className="billing-alert success"><CheckCircle2 /><span><b>Checkout completed</b><small>Stripe is confirming your access. This page will show the final status as soon as its signed event arrives.</small></span></div>}
         {checkoutResult === "cancelled" && <div className="billing-alert neutral"><CreditCard /><span><b>No payment was taken</b><small>You left checkout before completing payment.</small></span></div>}
         {!checkoutConfigured && <div className="billing-alert setup"><ShieldCheck /><span><b>Secure checkout is being connected</b><small>Plans and discounts are ready, but payment buttons stay disabled until the Stripe account is linked. Sponsored pass claiming already works.</small></span></div>}
+        {summary.starterCredit && <div className="billing-alert success"><Gift /><span><b>{formatCurrency(summary.starterCredit.amount)} upgrade credit ready</b><small>Your Starter Pass payment will be deducted once from your first Silver, Gold, or Platinum checkout.</small></span></div>}
         {message && <div className="billing-alert warning" role="alert"><CreditCard /><span><b>Billing update</b><small>{message}</small></span></div>}
 
         <section className="billing-status-grid">
@@ -74,29 +76,41 @@ export function BillingClient({ userName, summary, checkoutConfigured, paywallAc
             {summary.subscription?.hasCustomer && <button onClick={() => void openSession("/api/billing/portal")} disabled={busy !== null}>{busy === "/api/billing/portal" ? "Opening…" : <>Manage <ExternalLink /></>}</button>}
           </article>
           <article>
-            <span><Clock3 /></span><div><small>Sponsored access</small><h2>{summary.activePass ? "24-hour pass active" : "No active pass"}</h2><p>{summary.activePass ? `Available until ${new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(summary.activePass.expiresAt))}` : "A student can share a Capi-Helper claim link with you."}</p></div>
+            <span><Clock3 /></span><div><small>Pass access</small><h2>{summary.starterPass ? "7-Day Starter active" : summary.activePass ? "24-hour gift active" : "No active pass"}</h2><p>{summary.starterPass ? `Available until ${new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(summary.starterPass.expiresAt))}` : summary.activePass ? `Available until ${new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(summary.activePass.expiresAt))}` : "Buy a Starter Pass or claim a Capi-Helper gift."}</p></div>
           </article>
           <article>
             <span><Star fill="currentColor" /></span><div><small>Your checkout discount</small><h2>{summary.discountPercent ? `${summary.discountPercent}% unlocked` : "Keep earning"}</h2><p>Based on {summary.earnedCoins.toLocaleString()} lifetime-earned Capi-Coins. Giving a pass does not remove your discount.</p></div>
           </article>
         </section>
 
-        <section className="billing-plans">
-          <header><div><span>SUBSCRIPTION OPTIONS</span><h2>Simple access, paid your way</h2><p>Discounts are recalculated securely from your learning history at checkout.</p></div><span className="billing-discount-badge"><Star fill="currentColor" /> {summary.discountPercent ? `${summary.discountPercent}% Capi discount` : "Discounts from 500 coins"}</span></header>
-          <div className="billing-plan-grid">
-            {(Object.keys(BILLING_PLANS) as Array<keyof typeof BILLING_PLANS>).map((planId) => {
-              const plan = BILLING_PLANS[planId];
-              const discounted = discountedAmount(plan.amount, summary.discountPercent);
-              return <article className={planId === "six_months" ? "featured" : ""} key={planId}>
-                {planId === "six_months" && <span className="best-value">BEST VALUE</span>}
-                <span className="plan-icon">{planId === "one_month" ? <CreditCard /> : <CalendarClock />}</span>
-                <small>{plan.label.toUpperCase()}</small><h3>{formatCurrency(discounted)}<em>/{plan.label}</em></h3>
-                {summary.discountPercent > 0 && <p className="original-price"><s>{formatCurrency(plan.amount)}</s> with {summary.discountPercent}% Capi-Coin discount</p>}
-                <p>{plan.description}</p>
-                <ul><li><Check /> All four IELTS modules</li><li><Check /> Speaking & Writing AI feedback</li><li><Check /> Adaptive weekly plan and reports</li><li><Check /> Weekend mock comparisons</li></ul>
-                <button disabled={!checkoutConfigured || Boolean(activeSubscription) || busy !== null} onClick={() => void openSession("/api/billing/checkout", { plan: planId })}>
-                  {activeSubscription ? "Current membership active" : busy === "/api/billing/checkout" ? "Opening secure checkout…" : checkoutConfigured ? <>Choose {plan.label.toLowerCase()} <ArrowRight /></> : <><LockKeyhole /> Checkout coming soon</>}
-                </button>
+        <section className="billing-plans package-pricing">
+          <header><div><span>MEMBERSHIP OPTIONS</span><h2>Start independently. Add support when you need it.</h2><p>Silver, Gold, and Platinum receive your securely calculated Capi-Coin discount at checkout.</p></div><span className="billing-discount-badge"><Star fill="currentColor" /> {summary.discountPercent ? `${summary.discountPercent}% Capi discount` : "Discounts from 500 coins"}</span></header>
+
+          <article className="starter-pass-card">
+            <div className="starter-pass-icon"><Clock3 /></div>
+            <div><small>7-DAY STARTER PASS</small><h3>Try the complete platform for one focused week.</h3><p>All four modules, AI feedback, adaptive planning and mock practice. No online teacher meetings.</p></div>
+            <span><b>{formatCurrency(BILLING_PLANS.starter_week.amount)}</b><small>credited if you upgrade</small></span>
+            <button disabled={!checkoutConfigured || Boolean(activeSubscription) || summary.hasStarterPurchase || busy !== null} onClick={() => void openSession("/api/billing/checkout", { plan: "starter_week" })}>{summary.starterPass ? "Starter Pass active" : summary.hasStarterPurchase ? "Starter Pass already used" : busy === "/api/billing/checkout" ? "Opening checkout…" : checkoutConfigured ? <>Get 7-day access <ArrowRight /></> : <><LockKeyhole /> Checkout coming soon</>}</button>
+          </article>
+
+          <div className="billing-package-grid">
+            {BILLING_PACKAGES.map((membership) => {
+              const selectedId = selectedPlans[membership.tier];
+              const selectedPlan = BILLING_PLANS[selectedId];
+              const discounted = discountedAmount(selectedPlan.amount, summary.discountPercent);
+              const TierIcon = membership.tier === "silver" ? MonitorPlay : membership.tier === "gold" ? GraduationCap : Crown;
+              return <article className={`membership-package ${membership.tier}`} key={membership.tier}>
+                {membership.badge && <span className="package-badge">{membership.badge}</span>}
+                <span className="plan-icon"><TierIcon /></span><small>{membership.name.toUpperCase()}</small><h3>{membership.subtitle}</h3><p className="meeting-label"><Users /> {membership.meetingLabel}</p>
+                <div className="package-duration-options" aria-label={`${membership.name} duration`}>
+                  {membership.planIds.map((planId) => {
+                    const option = BILLING_PLANS[planId];
+                    return <button type="button" className={selectedId === planId ? "selected" : ""} aria-pressed={selectedId === planId} onClick={() => setSelectedPlans((current) => ({ ...current, [membership.tier]: planId }))} key={planId}><span>{option.durationLabel}</span><b>{formatCurrency(discountedAmount(option.amount, summary.discountPercent))}</b></button>;
+                  })}
+                </div>
+                <div className="package-price"><small>Selected package</small><strong>{formatCurrency(discounted)}</strong>{summary.discountPercent > 0 && <span><s>{formatCurrency(selectedPlan.amount)}</s> · {summary.discountPercent}% off</span>}{summary.starterCredit && <em>Plus {formatCurrency(summary.starterCredit.amount)} Starter credit at checkout</em>}</div>
+                <ul>{membership.features.map((feature) => <li key={feature}><Check /> {feature}</li>)}</ul>
+                <button className="package-checkout" disabled={!checkoutConfigured || Boolean(activeSubscription) || busy !== null} onClick={() => void openSession("/api/billing/checkout", { plan: selectedId })}>{activeSubscription ? "Current membership active" : busy === "/api/billing/checkout" ? "Opening secure checkout…" : checkoutConfigured ? <>Choose {membership.name} <ArrowRight /></> : <><LockKeyhole /> Checkout coming soon</>}</button>
               </article>;
             })}
           </div>

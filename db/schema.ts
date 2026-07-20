@@ -211,6 +211,29 @@ export const sponsoredAccessPasses = sqliteTable(
   ],
 );
 
+export const paidAccessPasses = sqliteTable(
+  "paid_access_passes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull(),
+    status: text("status").notNull(),
+    amountPaid: integer("amount_paid").notNull(),
+    currency: text("currency").notNull(),
+    startsAt: text("starts_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    creditAmount: integer("credit_amount").notNull(),
+    creditReservedSessionId: text("credit_reserved_session_id"),
+    creditUsedAt: text("credit_used_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("paid_access_passes_checkout_session_uidx").on(table.stripeCheckoutSessionId),
+    index("paid_access_passes_user_expires_at_idx").on(table.userEmail, table.expiresAt),
+  ],
+);
+
 export type Subscription = typeof subscriptions.$inferSelect;
 export type PaymentHistory = typeof paymentHistory.$inferSelect;
 export type SponsoredAccessPass = typeof sponsoredAccessPasses.$inferSelect;
+export type PaidAccessPass = typeof paidAccessPasses.$inferSelect;
