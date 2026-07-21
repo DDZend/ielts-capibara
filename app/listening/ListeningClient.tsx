@@ -425,7 +425,7 @@ export function ListeningClient({ userName, creatorLessons, initialLessonId }: {
         </div>
         <div className="listening-hero-visual">
           <span className="sound-ring ring-one" /><span className="sound-ring ring-two" /><span className="sound-ring ring-three" />
-          <img src="/capi-headset.png" alt="Capi Coach wearing a listening headset" />
+          <img src="/capi-headset.png" alt="Capy Coach wearing a listening headset" />
           <div className="listening-now-card"><Headphones /><span><small>YOUR PROGRESS</small><b>{completed.length} of 12 practised</b></span></div>
         </div>
       </section>
@@ -457,7 +457,7 @@ export function ListeningClient({ userName, creatorLessons, initialLessonId }: {
           <div className="listening-after-video"><span>AFTER THE VIDEO</span><i /><small>Predict, listen once, answer, then replay the evidence.</small></div>
 
           <section className="listening-strategy-card">
-            <header><span><Lightbulb /></span><div><small>CAPI&apos;S STRATEGY</small><h3>A three-step listening route</h3></div></header>
+            <header><span><Lightbulb /></span><div><small>CAPY&apos;S STRATEGY</small><h3>A three-step listening route</h3></div></header>
             <div className="listening-strategy-steps">{lesson.strategy.map((step, index) => <span key={step}><i>{index + 1}</i><b>{step}</b>{index < 2 && <ArrowRight />}</span>)}</div>
             <footer><CircleAlert /><span><small>TRAP TO AVOID</small>{lesson.trap}</span></footer>
           </section>

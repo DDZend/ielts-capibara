@@ -54,7 +54,7 @@ test("all requested routes are present", async () => {
   ]);
 });
 
-test("Capi Coach is a grounded personalised tutor with limits, exam safety and teacher escalation", async () => {
+test("Capy Coach is a grounded personalised tutor with limits, exam safety and teacher escalation", async () => {
   const [api, database, schema, runtimeSchema, migration, dashboard, supportApi, supportPage, supportUi, tutorConfig] = await Promise.all([
     read("app/api/capi-tutor/route.ts"),
     read("db/tutor.ts"),
@@ -64,7 +64,7 @@ test("Capi Coach is a grounded personalised tutor with limits, exam safety and t
     read("app/dashboard/DashboardClient.tsx"),
     read("app/api/creator/capi-coach/route.ts"),
     read("app/creator/capi-coach/page.tsx"),
-    read("app/creator/capi-coach/CapiCoachSupportClient.tsx"),
+    read("app/creator/capi-coach/CapyCoachSupportClient.tsx"),
     read("lib/capi-tutor.ts"),
   ]);
   assert.match(api, /getApiLearningUser/);
@@ -91,10 +91,10 @@ test("Capi Coach is a grounded personalised tutor with limits, exam safety and t
   assert.match(dashboard, /message\.escalationRequired/);
   assert.match(supportApi, /getApiCreatorUser\("classes"\)/);
   assert.match(supportPage, /requireCreatorUser\("\/creator\/capi-coach", "classes"\)/);
-  assert.match(supportUi, /Your reply is now visible in the student’s Capi Coach conversation/);
+  assert.match(supportUi, /Your reply is now visible in the student’s Capy Coach conversation/);
 });
 
-test("Capi Coach lesson recommendations open the exact published lesson", async () => {
+test("Capy Coach lesson recommendations open the exact published lesson", async () => {
   const files = await Promise.all(["speaking", "writing", "reading", "listening"].flatMap((module) => [read(`app/${module}/page.tsx`), read(`app/${module}/${module[0].toUpperCase()}${module.slice(1)}Client.tsx`)]));
   for (let index = 0; index < files.length; index += 2) {
     assert.match(files[index], /searchParams: Promise<\{ lesson\?: string \}>/);
@@ -102,6 +102,22 @@ test("Capi Coach lesson recommendations open the exact published lesson", async 
     assert.match(files[index + 1], /initialLessonId\?: string/);
     assert.match(files[index + 1], /item\.id === initialLessonId/);
   }
+});
+
+test("student and teacher interfaces consistently use the Capybara brand spelling", async () => {
+  const visibleSources = await Promise.all([
+    "app/page.tsx", "app/layout.tsx", "app/dashboard/DashboardClient.tsx", "app/dashboard/page.tsx",
+    "app/assessment/AssessmentClient.tsx", "app/billing/BillingClient.tsx", "app/classes/ClassesClient.tsx",
+    "app/speaking/SpeakingClient.tsx", "app/writing/WritingClient.tsx", "app/reading/ReadingClient.tsx",
+    "app/listening/ListeningClient.tsx", "app/sponsored-access/SponsoredAccessClient.tsx",
+    "app/creator/CreatorStudioClient.tsx", "app/creator/capi-coach/CapyCoachSupportClient.tsx",
+    "app/creator/capi-coach/page.tsx", "app/creator/memberships/MembershipAdminClient.tsx",
+  ].map(read));
+  for (const source of visibleSources) assert.doesNotMatch(source, /\bCapi(?:bara)?\b|\bCAPI(?:BARA)?\b/);
+  const combined = visibleSources.join("\n");
+  for (const label of ["Capy Coach", "Capy-Coins", "Capy Helper"]) assert.match(combined, new RegExp(label));
+  const migration = await read("drizzle/0012_rename_capy_brand.sql");
+  for (const table of ["mock_tests", "mock_test_versions", "capi_tutor_messages", "capi_tutor_escalations", "creator_lessons"]) assert.match(migration, new RegExp(table));
 });
 
 test("daily study tasks and weekly mocks are owned by the signed-in student", async () => {
@@ -192,7 +208,7 @@ test("weekly mock migration enforces one result per user and week", async () => 
   assert.match(migration, /\(`user_email`,`week_start`\)/);
 });
 
-test("challenge card uses Capi checklist artwork without a calendar icon", async () => {
+test("challenge card uses Capy checklist artwork without a calendar icon", async () => {
   const dashboard = await read("app/dashboard/DashboardClient.tsx");
   const challenge = dashboard.slice(dashboard.indexOf('className="challenge-card'), dashboard.indexOf('className="capi-advice-card'));
   assert.match(challenge, /capi-challenge\.png/);
@@ -218,7 +234,7 @@ test("dashboard topbar and skill modules expose compact interactive controls", a
   assert.match(styles, /\.dashboard-language select \{ position: absolute; z-index: 2; inset: 0;/);
 });
 
-test("Capi Helper turns donated coins into persistent one-day passes for new learners", async () => {
+test("Capy Helper turns donated coins into persistent one-day passes for new learners", async () => {
   const [dashboard, styles, api, schema, migration, commercialMigration] = await Promise.all([
     read("app/dashboard/DashboardClient.tsx"),
     read("app/globals.css"),

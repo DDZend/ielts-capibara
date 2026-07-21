@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Your current membership can be renewed or cancelled from Manage billing. Only upgrades to a higher support tier are available here." }, { status: 409 });
     }
     if (typeof values.promoCode === "string" && values.promoCode.trim()) {
-      return NextResponse.json({ error: "Promotion codes apply to a new membership. Your Capi-Coin discount and the unused value of your current plan are both applied automatically to this upgrade." }, { status: 400 });
+      return NextResponse.json({ error: "Promotion codes apply to a new membership. Your Capy-Coin discount and the unused value of your current plan are both applied automatically to this upgrade." }, { status: 400 });
     }
     const existing = await stripe.subscriptions.retrieve(subscriptionRow!.stripe_subscription_id!, { expand: ["latest_invoice"] });
     const item = existing.items.data[0];

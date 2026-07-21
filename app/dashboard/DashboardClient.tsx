@@ -179,16 +179,16 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
     setTutorError("");
     void fetch("/api/capi-tutor").then(async (response) => {
       const data = await response.json() as { messages?: TutorMessageView[]; usage?: TutorUsage; error?: string };
-      if (!response.ok) throw new Error(data.error ?? "Capi Coach could not load your conversation.");
+      if (!response.ok) throw new Error(data.error ?? "Capy Coach could not load your conversation.");
       setTutorMessages(data.messages ?? []);
       setTutorUsage(data.usage ?? null);
       setTutorLoaded(true);
     }).catch((caught) => {
-      setTutorError(caught instanceof Error ? caught.message : "Capi Coach could not load.");
+      setTutorError(caught instanceof Error ? caught.message : "Capy Coach could not load.");
     }).finally(() => setTutorState("idle"));
   };
 
-  const askCapi = async (question: string) => {
+  const askCapy = async (question: string) => {
     const clean = question.trim();
     if (!clean || tutorState === "sending") return;
     const optimisticId = --tutorOptimisticId.current;
@@ -200,13 +200,13 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
     try {
       const response = await fetch("/api/capi-tutor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: clean, language: tutorLanguage }) });
       const data = await response.json() as { studentMessage?: TutorMessageView; assistantMessage?: TutorMessageView; usage?: TutorUsage; error?: string };
-      if (!response.ok || !data.studentMessage || !data.assistantMessage) throw new Error(data.error ?? "Capi could not answer that question.");
+      if (!response.ok || !data.studentMessage || !data.assistantMessage) throw new Error(data.error ?? "Capy could not answer that question.");
       setTutorMessages((current) => [...current.filter((message) => message.id !== optimisticId), data.studentMessage!, data.assistantMessage!]);
       if (data.usage) setTutorUsage(data.usage);
     } catch (caught) {
       setTutorMessages((current) => current.filter((message) => message.id !== optimisticId));
       setChatInput(clean);
-      setTutorError(caught instanceof Error ? caught.message : "Capi could not answer that question.");
+      setTutorError(caught instanceof Error ? caught.message : "Capy could not answer that question.");
     } finally {
       setTutorState("idle");
     }
@@ -275,7 +275,7 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
           <div className="nav-line" />
           <button className="nav-item" onClick={() => { setTargetOpen(true); setSidebarOpen(false); document.getElementById("dashboard-top")?.scrollIntoView(); }}><span><Settings /></span>Target settings</button>
         </nav>
-        <button className="sidebar-help" onClick={() => { openTutor(); setSidebarOpen(false); }}><HelpCircle /><span><b>Need help?</b><small>Ask Capi Coach</small></span><ChevronRight /></button>
+        <button className="sidebar-help" onClick={() => { openTutor(); setSidebarOpen(false); }}><HelpCircle /><span><b>Need help?</b><small>Ask Capy Coach</small></span><ChevronRight /></button>
       </aside>
       {sidebarOpen && <button className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close navigation" />}
 
@@ -285,33 +285,33 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
           <Link className="mobile-dashboard-brand" href="/"><span className="brand-c">C</span><b>IELTS Mastery</b></Link>
           <div className="topbar-actions">
             <div className="topbar-control-wrap coin-control">
-              <button className="metric metric-button interactive-control" aria-haspopup="dialog" aria-expanded={coinsOpen} aria-controls="capi-coins-panel" onClick={() => { setCoinsOpen((open) => !open); setProfileOpen(false); }}><Star fill="currentColor" /><span><small>Capi-Coins</small><b>{livePoints.toLocaleString()}</b></span></button>
+              <button className="metric metric-button interactive-control" aria-haspopup="dialog" aria-expanded={coinsOpen} aria-controls="capi-coins-panel" onClick={() => { setCoinsOpen((open) => !open); setProfileOpen(false); }}><Star fill="currentColor" /><span><small>Capy-Coins</small><b>{livePoints.toLocaleString()}</b></span></button>
               {coinsOpen && (
-                <div className="topbar-popover coins-popover" id="capi-coins-panel" role="dialog" aria-label="Capi-Coins rewards centre">
+                <div className="topbar-popover coins-popover" id="capi-coins-panel" role="dialog" aria-label="Capy-Coins rewards centre">
                   <div className="coins-popover-head">
                     <span className="popover-icon coins"><Star fill="currentColor" /></span>
-                    <div><small>Your balance</small><h3>{livePoints.toLocaleString()} Capi-Coins</h3></div>
-                    <button type="button" aria-label="Close Capi-Coins rewards" onClick={() => setCoinsOpen(false)}><X /></button>
+                    <div><small>Your balance</small><h3>{livePoints.toLocaleString()} Capy-Coins</h3></div>
+                    <button type="button" aria-label="Close Capy-Coins rewards" onClick={() => setCoinsOpen(false)}><X /></button>
                   </div>
 
                   <section className="capi-helper-reward">
                     <div className="capi-helper-intro">
-                      <img src="/capi-advice.png" alt="Capi helping a new IELTS learner" />
+                      <img src="/capi-advice.png" alt="Capy helping a new IELTS learner" />
                       <div>
-                        <span><Gift /> Capi Helper</span>
+                        <span><Gift /> Capy Helper</span>
                         <h4>Give a new student one free day</h4>
-                        <p>Donate Capi-Coins to place a 24-hour IELTS Mastery pass in the new-learner pool.</p>
+                        <p>Donate Capy-Coins to place a 24-hour IELTS Mastery pass in the new-learner pool.</p>
                       </div>
                     </div>
-                    <div className="capi-helper-exchange" aria-label="500 Capi-Coins gives one learner 24 hours of access">
-                      <span><Star fill="currentColor" /><b>500</b><small>Capi-Coins</small></span>
+                    <div className="capi-helper-exchange" aria-label="500 Capy-Coins gives one learner 24 hours of access">
+                      <span><Star fill="currentColor" /><b>500</b><small>Capy-Coins</small></span>
                       <ArrowRight />
                       <span><Clock3 /><b>24 hours</b><small>Free access</small></span>
                     </div>
 
                     {giftState === "confirming" ? (
                       <div className="capi-helper-confirm">
-                        <p><b>Confirm your gift?</b> Your available balance will become {(livePoints - capiHelperGiftCost).toLocaleString()} Capi-Coins.</p>
+                        <p><b>Confirm your gift?</b> Your available balance will become {(livePoints - capiHelperGiftCost).toLocaleString()} Capy-Coins.</p>
                         <div><button type="button" className="gift-cancel" onClick={() => setGiftState("idle")}>Not now</button><button type="button" onClick={() => void sponsorLearner()}>Give 500 coins <Gift /></button></div>
                       </div>
                     ) : giftState === "sent" ? (
@@ -370,8 +370,8 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
 
         <div className="dashboard-content" id="dashboard-top">
           <section className={`welcome-card dashboard-card ${targetOpen ? "target-open" : ""}`}>
-            <div className="welcome-copy"><span className="eyebrow"><Sparkles /> Your personal study space</span><h1>Good to see you, {firstName}.</h1><p>{latest ? <>You&apos;re building toward Band {targetBand.toFixed(1)}. Your saved results have adjusted today&apos;s plan toward <b>{adaptivePriority.toLowerCase()}</b>.</> : <>Start with the free assessment and Capi will build your personal route to Band {targetBand.toFixed(1)}.</>}</p><div className="welcome-actions"><Link className="button primary" href={latest ? "#today-plan" : "/assessment"}>{latest ? "Continue today’s plan" : "Take the assessment"}<ArrowRight /></Link><button className="button soft" onClick={() => setTargetOpen((open) => !open)}><Target /> Target {targetBand.toFixed(1)}<ChevronDown /></button>{targetState === "saved" && <span className="saved-hint"><Check /> Saved</span>}</div>{targetOpen && <div className="target-picker" aria-label="Choose target band">{[6, 6.5, 7, 7.5, 8, 8.5, 9].map((band) => <button key={band} onClick={() => void updateTarget(band)} className={band === targetBand ? "selected" : ""}>{band.toFixed(1)}</button>)}</div>}</div>
-            <img src="/capi-welcome.png" alt="Capi Coach pointing upward and holding a small rocket" />
+            <div className="welcome-copy"><span className="eyebrow"><Sparkles /> Your personal study space</span><h1>Good to see you, {firstName}.</h1><p>{latest ? <>You&apos;re building toward Band {targetBand.toFixed(1)}. Your saved results have adjusted today&apos;s plan toward <b>{adaptivePriority.toLowerCase()}</b>.</> : <>Start with the free assessment and Capy will build your personal route to Band {targetBand.toFixed(1)}.</>}</p><div className="welcome-actions"><Link className="button primary" href={latest ? "#today-plan" : "/assessment"}>{latest ? "Continue today’s plan" : "Take the assessment"}<ArrowRight /></Link><button className="button soft" onClick={() => setTargetOpen((open) => !open)}><Target /> Target {targetBand.toFixed(1)}<ChevronDown /></button>{targetState === "saved" && <span className="saved-hint"><Check /> Saved</span>}</div>{targetOpen && <div className="target-picker" aria-label="Choose target band">{[6, 6.5, 7, 7.5, 8, 8.5, 9].map((band) => <button key={band} onClick={() => void updateTarget(band)} className={band === targetBand ? "selected" : ""}>{band.toFixed(1)}</button>)}</div>}</div>
+            <img src="/capi-welcome.png" alt="Capy Coach pointing upward and holding a small rocket" />
           </section>
 
           <div className="dashboard-columns">
@@ -402,7 +402,7 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
 
               <section id="today-plan" className="today-card dashboard-card">
                 <div className="card-heading"><div><span className="eyebrow">{new Intl.DateTimeFormat("en", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</span><h2>Today&apos;s study plan</h2></div><span className="time-total"><Clock3 /> {initialStats.totalMinutesToday} minutes</span></div>
-                <div className="plan-list">{tasks.map((task, index) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id} className={task.completedAt ? "completed" : ""}><time>{String(9 + index * 4).padStart(2, "0")}:00</time><span className={`plan-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title}</b><small>{task.completedAt ? "Completed today · +40 Capi-Coins" : `${task.minutes} min · ${task.taskType}`}</small></div><button aria-label={`${task.completedAt ? "Mark incomplete" : "Complete"} ${task.title}`} aria-pressed={Boolean(task.completedAt)} onClick={() => void toggleTask(task)} className={index === 0 || task.completedAt ? "active" : ""}>{task.completedAt ? <Check /> : index === 0 ? <Play fill="currentColor" /> : <ChevronRight />}</button></article>; })}</div>
+                <div className="plan-list">{tasks.map((task, index) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id} className={task.completedAt ? "completed" : ""}><time>{String(9 + index * 4).padStart(2, "0")}:00</time><span className={`plan-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title}</b><small>{task.completedAt ? "Completed today · +40 Capy-Coins" : `${task.minutes} min · ${task.taskType}`}</small></div><button aria-label={`${task.completedAt ? "Mark incomplete" : "Complete"} ${task.title}`} aria-pressed={Boolean(task.completedAt)} onClick={() => void toggleTask(task)} className={index === 0 || task.completedAt ? "active" : ""}>{task.completedAt ? <Check /> : index === 0 ? <Play fill="currentColor" /> : <ChevronRight />}</button></article>; })}</div>
                 <div className="weekly-line"><span><b>This week</b><small>{liveDays} of 5 study days complete</small></span><div><i style={{ width: `${weeklyPercent}%` }} /></div><b>{weeklyPercent}%</b></div>
               </section>
 
@@ -414,30 +414,30 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
                   <article><small>Latest AI estimate</small><b>{weeklyReport.latestAiBand !== null ? weeklyReport.latestAiBand.toFixed(1) : "—"}</b><span>{weeklyReport.latestAiSkill ?? "Speaking or Writing"}{weeklyReport.aiChange !== null ? ` · ${weeklyReport.aiChange >= 0 ? "+" : ""}${weeklyReport.aiChange.toFixed(1)}` : ""}</span></article>
                   <article><small>Weekend mock</small><b>{weeklyReport.latestMockBand !== null ? weeklyReport.latestMockBand.toFixed(1) : "—"}</b><span>{weeklyReport.mockChange !== null ? `${weeklyReport.mockChange >= 0 ? "+" : ""}${weeklyReport.mockChange.toFixed(1)} vs previous` : "Complete your first mock"}</span></article>
                 </div>
-                <div className="weekly-report-insight"><span><Target /></span><div><small>Next-week adjustment</small><b>Capi is prioritising {weeklyReport.focusSkill}</b><p>Your plan uses recent exercise accuracy, saved AI bands and mock-test results to choose the module that needs the most attention.</p></div><button className="button soft" onClick={() => void shareWeeklyReport()}>{reportShared ? <><Check /> Report ready to share</> : <>Share report <ArrowRight /></>}</button></div>
+                <div className="weekly-report-insight"><span><Target /></span><div><small>Next-week adjustment</small><b>Capy is prioritising {weeklyReport.focusSkill}</b><p>Your plan uses recent exercise accuracy, saved AI bands and mock-test results to choose the module that needs the most attention.</p></div><button className="button soft" onClick={() => void shareWeeklyReport()}>{reportShared ? <><Check /> Report ready to share</> : <>Share report <ArrowRight /></>}</button></div>
               </section>
 
-              <section className="recent-card dashboard-card"><div className="card-heading"><h2>Recent activity</h2></div><div className="activity-list">{activityTasks.map((task) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id}><span className={`activity-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title} completed</b><small>{task.minutes} minutes · {task.skill} · +40 Capi-Coins</small></div><time>{task.completedAt ? new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(task.completedAt)) : "Today"}</time></article>; })}{latest && <article><span className="activity-icon assessment"><BarChart3 /></span><div><b>Assessment result saved</b><small>Overall {latest.overallBand.toFixed(1)} · priority: {latest.prioritySkill}</small></div><time>{new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(latest.createdAt))}</time></article>}</div></section>
+              <section className="recent-card dashboard-card"><div className="card-heading"><h2>Recent activity</h2></div><div className="activity-list">{activityTasks.map((task) => { const moduleInfo = modules.find((item) => item.skill === task.skill) ?? modules[2]; const Icon = moduleInfo.icon; return <article key={task.id}><span className={`activity-icon ${moduleInfo.className}`}><Icon /></span><div><b>{task.title} completed</b><small>{task.minutes} minutes · {task.skill} · +40 Capy-Coins</small></div><time>{task.completedAt ? new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(task.completedAt)) : "Today"}</time></article>; })}{latest && <article><span className="activity-icon assessment"><BarChart3 /></span><div><b>Assessment result saved</b><small>Overall {latest.overallBand.toFixed(1)} · priority: {latest.prioritySkill}</small></div><time>{new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(new Date(latest.createdAt))}</time></article>}</div></section>
 
-              <section className="weekend-mock-card dashboard-card"><div className="weekend-mock-copy"><span className="eyebrow light"><Trophy /> {weekend ? "This weekend" : "Weekend challenge"}</span><h2>Challenge yourself</h2><p>Take a complete four-skill practice mock every weekend and compare your estimate with the previous week.</p><div className="mock-card-stats">{latestMock ? <><span><small>Latest overall</small><b>{latestMock.overallBand.toFixed(1)}</b></span><span><small>Previous week</small><b>{previousMock?.overallBand.toFixed(1) ?? "—"}</b></span><span><small>Weekly change</small><b className={mockDelta !== null && mockDelta >= 0 ? "positive" : ""}>{mockDelta === null ? "First result" : `${mockDelta >= 0 ? "+" : ""}${mockDelta.toFixed(1)}`}</b></span></> : <><span><small>Skills</small><b>4 modules</b></span><span><small>Time</small><b>20–25 min</b></span><span><small>Goal</small><b>Beat last week</b></span></>}</div><Link className="button white" href="/mock-test">{mockDoneThisWeek ? "Review this week’s result" : weekend ? "Start weekend mock" : "Prepare for the weekend"}<ArrowRight /></Link></div><img src="/capi-challenge.png" alt="Capi Coach with a checklist and trophy" /></section>
+              <section className="weekend-mock-card dashboard-card"><div className="weekend-mock-copy"><span className="eyebrow light"><Trophy /> {weekend ? "This weekend" : "Weekend challenge"}</span><h2>Challenge yourself</h2><p>Take a complete four-skill practice mock every weekend and compare your estimate with the previous week.</p><div className="mock-card-stats">{latestMock ? <><span><small>Latest overall</small><b>{latestMock.overallBand.toFixed(1)}</b></span><span><small>Previous week</small><b>{previousMock?.overallBand.toFixed(1) ?? "—"}</b></span><span><small>Weekly change</small><b className={mockDelta !== null && mockDelta >= 0 ? "positive" : ""}>{mockDelta === null ? "First result" : `${mockDelta >= 0 ? "+" : ""}${mockDelta.toFixed(1)}`}</b></span></> : <><span><small>Skills</small><b>4 modules</b></span><span><small>Time</small><b>20–25 min</b></span><span><small>Goal</small><b>Beat last week</b></span></>}</div><Link className="button white" href="/mock-test">{mockDoneThisWeek ? "Review this week’s result" : weekend ? "Start weekend mock" : "Prepare for the weekend"}<ArrowRight /></Link></div><img src="/capi-challenge.png" alt="Capy Coach with a checklist and trophy" /></section>
             </div>
 
             <aside className="dashboard-secondary">
               <section className="calendar-card dashboard-card" id="study-calendar"><div className="card-heading"><div><span className="eyebrow">July 2026</span><h2>Your study week</h2></div><CalendarDays aria-hidden="true" /></div><div className="week-labels">{["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="week-days">{monthDays.map(({ day, state }) => <button key={day} aria-label={`Select July ${day}`} aria-pressed={selectedDay === day} onClick={() => setSelectedDay(day)} className={`${state} ${selectedDay === day ? "selected" : ""}`}>{day}{state === "done" && <Check />}</button>)}</div><div className="calendar-legend"><span><i className="done" /> Studied</span><span><i className="planned" /> Planned</span><span>Selected: {selectedDay} July</span></div></section>
 
-              <section className="challenge-card dashboard-card"><div><span className="eyebrow light"><Zap /> Capi challenge</span><h2>Three focused days</h2><p>Complete one planned lesson on three different days this week.</p><div className="challenge-progress">{[1,2,3].map((day) => <span key={day} className={liveDays >= day ? "done" : ""}>{liveDays >= day ? <Check /> : day}</span>)}</div><small>{Math.min(liveDays, 3)} of 3 days complete</small></div><img src="/capi-challenge.png" alt="Capi Coach wearing a blue headband with a checklist and trophy" /></section>
+              <section className="challenge-card dashboard-card"><div><span className="eyebrow light"><Zap /> Capy challenge</span><h2>Three focused days</h2><p>Complete one planned lesson on three different days this week.</p><div className="challenge-progress">{[1,2,3].map((day) => <span key={day} className={liveDays >= day ? "done" : ""}>{liveDays >= day ? <Check /> : day}</span>)}</div><small>{Math.min(liveDays, 3)} of 3 days complete</small></div><img src="/capi-challenge.png" alt="Capy Coach wearing a blue headband with a checklist and trophy" /></section>
 
-              <section className="capi-advice-card dashboard-card"><div className="advice-heading"><img src="/capi-advice.png" alt="Capi Coach with a magnifying glass and lightbulb" /><span><small>CAPI COACH</small><b>Today&apos;s advice</b></span></div><p>{latest ? <>Your <b>{latest.strengthSkill.toLowerCase()}</b> score gives you a strong base. Your recent saved work now points to <b>{adaptivePriority.toLowerCase()}</b> as the clearest place for the next improvement.</> : <>Take the short assessment first. I&apos;ll use your four module estimates to choose the clearest place to begin.</>}</p><button onClick={openTutor}>Ask Capi a question <ArrowRight /></button></section>
+              <section className="capi-advice-card dashboard-card"><div className="advice-heading"><img src="/capi-advice.png" alt="Capy Coach with a magnifying glass and lightbulb" /><span><small>CAPY COACH</small><b>Today&apos;s advice</b></span></div><p>{latest ? <>Your <b>{latest.strengthSkill.toLowerCase()}</b> score gives you a strong base. Your recent saved work now points to <b>{adaptivePriority.toLowerCase()}</b> as the clearest place for the next improvement.</> : <>Take the short assessment first. I&apos;ll use your four module estimates to choose the clearest place to begin.</>}</p><button onClick={openTutor}>Ask Capy a question <ArrowRight /></button></section>
 
-              <section className="live-class-card dashboard-card" id="live-class"><div className="live-image"><span>LIVE CLASS</span><img src="/capi-headset.png" alt="Capi Coach wearing a coaching headset" /></div><div><span className="eyebrow">Tuesday · 18:30</span><h3>Speaking Part 2: confident long turns</h3><p><Video /> With Anna Müller · 45 min</p><button className="button soft" aria-pressed={reserved} onClick={() => setReserved((value) => !value)}>{reserved ? <><Check /> Place reserved</> : <>Reserve my place <ArrowRight /></>}</button></div></section>
+              <section className="live-class-card dashboard-card" id="live-class"><div className="live-image"><span>LIVE CLASS</span><img src="/capi-headset.png" alt="Capy Coach wearing a coaching headset" /></div><div><span className="eyebrow">Tuesday · 18:30</span><h3>Speaking Part 2: confident long turns</h3><p><Video /> With Anna Müller · 45 min</p><button className="button soft" aria-pressed={reserved} onClick={() => setReserved((value) => !value)}>{reserved ? <><Check /> Place reserved</> : <>Reserve my place <ArrowRight /></>}</button></div></section>
             </aside>
           </div>
         </div>
       </div>
 
-      <button className="floating-capi" onClick={openTutor} aria-label="Open Capi Coach chat"><img src="/capi-profile.png" alt="" /><span>Ask Capi</span><MessageCircle /></button>
-      {chatOpen && <section className="capi-chat" aria-label="Capi Coach personalised tutor">
-        <header><img src="/capi-profile.png" alt="" /><span><b>Capi Coach</b><small><i /> {tutorCopy.ready}</small></span>{tutorUsage && <em>{tutorUsage.used}/{tutorUsage.limit}<small>{tutorUsage.planLabel}</small></em>}<button onClick={() => setChatOpen(false)} aria-label="Close chat"><X /></button></header>
+      <button className="floating-capi" onClick={openTutor} aria-label="Open Capy Coach chat"><img src="/capi-profile.png" alt="" /><span>Ask Capy</span><MessageCircle /></button>
+      {chatOpen && <section className="capi-chat" aria-label="Capy Coach personalised tutor">
+        <header><img src="/capi-profile.png" alt="" /><span><b>Capy Coach</b><small><i /> {tutorCopy.ready}</small></span>{tutorUsage && <em>{tutorUsage.used}/{tutorUsage.limit}<small>{tutorUsage.planLabel}</small></em>}<button onClick={() => setChatOpen(false)} aria-label="Close chat"><X /></button></header>
         <div className="tutor-toolbar" aria-label="Tutor language"><Languages />{([['en', 'Eng'], ['ru', 'Рус'], ['kk', 'Қаз']] as Array<[TutorLanguage, string]>).map(([value, label]) => <button type="button" className={tutorLanguage === value ? "active" : ""} aria-pressed={tutorLanguage === value} onClick={() => setTutorLanguage(value)} key={value}>{label}</button>)}<span><ShieldCheck /> Course-safe</span></div>
         <div className="chat-body">
           <div className="chat-messages" aria-live="polite">
@@ -450,12 +450,12 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
               {message.citations.length > 0 && <div className="tutor-citations"><small>{tutorCopy.sources}</small>{message.citations.map((citation) => <Link key={`${citation.module}-${citation.lessonId}`} href={citation.href}><span>{citation.module}</span>{citation.title}<ExternalLink /></Link>)}</div>}
               {message.escalationRequired && <span className="tutor-escalation"><ShieldCheck /> {tutorCopy.sent}</span>}
             </article>)}
-            {tutorState === "sending" && <article className="chat-message capi tutor-thinking"><span /><span /><span /> Capi is checking your course and progress…</article>}
+            {tutorState === "sending" && <article className="chat-message capi tutor-thinking"><span /><span /><span /> Capy is checking your course and progress…</article>}
           </div>
           {tutorError && <p className="tutor-error">{tutorError}</p>}
-          <div className="chat-suggestions">{TUTOR_STARTERS[tutorLanguage].map((starter) => <button type="button" onClick={() => { if (starter.endsWith(": ")) setChatInput(starter); else void askCapi(starter); }} key={starter}>{starter}</button>)}</div>
+          <div className="chat-suggestions">{TUTOR_STARTERS[tutorLanguage].map((starter) => <button type="button" onClick={() => { if (starter.endsWith(": ")) setChatInput(starter); else void askCapy(starter); }} key={starter}>{starter}</button>)}</div>
         </div>
-        <form onSubmit={(event) => { event.preventDefault(); void askCapi(chatInput); }}><input maxLength={2000} value={chatInput} onChange={(event) => setChatInput(event.target.value)} aria-label="Message Capi Coach" placeholder={tutorCopy.placeholder} disabled={tutorState === "sending" || tutorUsage?.remaining === 0} /><button aria-label="Send message" disabled={!chatInput.trim() || tutorState === "sending" || tutorUsage?.remaining === 0}><Send /></button></form>
+        <form onSubmit={(event) => { event.preventDefault(); void askCapy(chatInput); }}><input maxLength={2000} value={chatInput} onChange={(event) => setChatInput(event.target.value)} aria-label="Message Capy Coach" placeholder={tutorCopy.placeholder} disabled={tutorState === "sending" || tutorUsage?.remaining === 0} /><button aria-label="Send message" disabled={!chatInput.trim() || tutorState === "sending" || tutorUsage?.remaining === 0}><Send /></button></form>
       </section>}
     </main>
   );

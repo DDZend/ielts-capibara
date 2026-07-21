@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "My dashboard | IELTS Mastery",
-  description: "Your personal IELTS study plan, progress and Capi Coach guidance.",
+  description: "Your personal IELTS study plan, progress and Capy Coach guidance.",
 };
 
 export default async function DashboardPage() {

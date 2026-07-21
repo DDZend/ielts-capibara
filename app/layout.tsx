@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
   const title = "IELTS Mastery — Your Clear Path to Band 7.0";
-  const description = "Personal IELTS preparation across all four skills, with a focused study plan, live teacher support and daily guidance from Capi Coach.";
+  const description = "Personal IELTS preparation across all four skills, with a focused study plan, live teacher support and daily guidance from Capy Coach.";
   return {
     metadataBase: new URL(origin),
     title,

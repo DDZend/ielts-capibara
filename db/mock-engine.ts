@@ -125,7 +125,7 @@ function baseItem(input: Partial<MockExamItem> & Pick<MockExamItem, "key" | "ski
     key: input.key,
     skill: input.skill,
     lessonId: `starter-${input.skill.toLowerCase()}`,
-    lessonTitle: `Capi Mock ${input.skill}`,
+    lessonTitle: `Capy Mock ${input.skill}`,
     type: input.type,
     title: input.title ?? `${input.skill} question`,
     instruction: input.instruction ?? "Answer using only the information provided.",
@@ -151,7 +151,7 @@ export async function ensureMockCatalog(createdBy = "system") {
   const now = new Date().toISOString();
   const inserted = await getD1().prepare(`INSERT INTO mock_tests (title, description, status, created_by, created_at, updated_at)
     VALUES (?, ?, 'published', ?, ?, ?)`)
-    .bind("Capi Weekend IELTS Mock", "A secure four-skill benchmark with rotating versions and weekly comparison.", createdBy, now, now).run();
+    .bind("Capy Weekend IELTS Mock", "A secure four-skill benchmark with rotating versions and weekly comparison.", createdBy, now, now).run();
   const testId = Number(inserted.meta.last_row_id);
   for (const label of ["Version A", "Version B"] as const) {
     const items = seededItems(label.endsWith("A") ? "A" : "B");

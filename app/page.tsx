@@ -53,7 +53,7 @@ export default async function Home() {
             <a href="#features">Features</a>
             <a href="#how-it-works">How it works</a>
             <a href="#support">Live support</a>
-            <a href="#about-capi">Capi Coach</a>
+            <a href="#about-capy">Capy Coach</a>
           </nav>
           <div className="nav-actions">
             <label className="language-control compact">
@@ -69,7 +69,7 @@ export default async function Home() {
             </Link>
             <details className="mobile-menu">
               <summary aria-label="Open menu"><Menu size={22} /></summary>
-              <nav><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#support">Live support</a><a href="#about-capi">Capi Coach</a></nav>
+              <nav><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#support">Live support</a><a href="#about-capy">Capy Coach</a></nav>
             </details>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default async function Home() {
         </div>
         <div className="hero-visual">
           <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
-          <img src="/capi-official.png" alt="Capi Coach giving a thumbs-up beside a plant" />
+          <img src="/capi-official.png" alt="Capy Coach giving a thumbs-up beside a plant" />
           <div className="floating-note note-band"><Target size={18} /><span><small>Your target</small><b>Band 7.0</b></span></div>
           <div className="floating-note note-plan"><CalendarDays size={18} /><span><small>Today</small><b>25 min plan</b></span></div>
         </div>
@@ -109,9 +109,9 @@ export default async function Home() {
         </div>
       </section>
 
-      <section id="about-capi" className="section wrap split-section advice-section">
-        <div className="capi-panel"><img src="/capi-advice.png" alt="Capi Coach with a magnifying glass and lightbulb" /></div>
-        <div><span className="eyebrow"><MessageCircle size={16} /> Meet Capi Coach</span><h2>Friendly guidance, right when you need it</h2><p>Capi turns your results into small, useful next steps. No vague advice and no pressure—just a clear focus for today.</p>
+      <section id="about-capy" className="section wrap split-section advice-section">
+        <div className="capi-panel"><img src="/capi-advice.png" alt="Capy Coach with a magnifying glass and lightbulb" /></div>
+        <div><span className="eyebrow"><MessageCircle size={16} /> Meet Capy Coach</span><h2>Friendly guidance, right when you need it</h2><p>Capy turns your results into small, useful next steps. No vague advice and no pressure—just a clear focus for today.</p>
           <blockquote>“Your reading accuracy is growing. This week, let’s practise matching headings without rushing the first paragraph.”</blockquote>
           <ul className="check-list"><li><Check size={17} /> Advice shaped by your latest results</li><li><Check size={17} /> Daily practice that fits your schedule</li><li><Check size={17} /> Encouragement without the noise</li></ul>
         </div>
@@ -122,9 +122,9 @@ export default async function Home() {
         <div className="live-card"><div className="live-card-top"><span className="live-badge">LIVE</span><span>Next class</span></div><h3>Speaking Part 2: confident long turns</h3><p>Tuesday, 18:30 · 45 minutes</p><div className="teacher-row"><span className="teacher-avatar">AM</span><span><b>Anna Müller</b><small>IELTS Speaking Specialist</small></span><button aria-label="Preview live class"><Play size={20} fill="currentColor" /></button></div></div>
       </div></section>
 
-      <section className="final-cta wrap"><div><span className="eyebrow light">Your first step is free</span><h2>See your clearest route to IELTS 7.0.</h2><p>Complete the short assessment and receive your personalised starting plan.</p><Link className="button white" href="/assessment">Start my free assessment <ArrowRight size={18} /></Link></div><img src="/capi-assessment.png" alt="Capi Coach holding a clipboard and pencil" /></section>
+      <section className="final-cta wrap"><div><span className="eyebrow light">Your first step is free</span><h2>See your clearest route to IELTS 7.0.</h2><p>Complete the short assessment and receive your personalised starting plan.</p><Link className="button white" href="/assessment">Start my free assessment <ArrowRight size={18} /></Link></div><img src="/capi-assessment.png" alt="Capy Coach holding a clipboard and pencil" /></section>
 
-      <footer><div className="wrap footer-grid"><div><Brand /><p>Calm, focused IELTS preparation for ambitious learners.</p></div><div><h3>Learn</h3><a href="#features">Four skills</a><a href="#how-it-works">How it works</a><a href="/assessment">Free assessment</a></div><div><h3>Support</h3><a href="#support">Live classes</a><a href="#about-capi">Capi Coach</a><a href="mailto:hello@ieltsmastery.com">Contact</a></div><div><h3>Language</h3><label className="language-control"><Languages size={16} /><select aria-label="Footer language"><option>English</option><option>Русский</option><option>Қазақша</option></select><ChevronDown size={14} /></label></div></div><div className="wrap footer-bottom"><span>© 2026 IELTS Mastery</span><span>IELTS is a registered trademark of its respective owners.</span></div></footer>
+      <footer><div className="wrap footer-grid"><div><Brand /><p>Calm, focused IELTS preparation for ambitious learners.</p></div><div><h3>Learn</h3><a href="#features">Four skills</a><a href="#how-it-works">How it works</a><a href="/assessment">Free assessment</a></div><div><h3>Support</h3><a href="#support">Live classes</a><a href="#about-capy">Capy Coach</a><a href="mailto:hello@ieltsmastery.com">Contact</a></div><div><h3>Language</h3><label className="language-control"><Languages size={16} /><select aria-label="Footer language"><option>English</option><option>Русский</option><option>Қазақша</option></select><ChevronDown size={14} /></label></div></div><div className="wrap footer-bottom"><span>© 2026 IELTS Mastery</span><span>IELTS is a registered trademark of its respective owners.</span></div></footer>
     </main>
   );
 }

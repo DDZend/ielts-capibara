@@ -35,7 +35,7 @@ export async function POST() {
   ).run();
 
   if (!insert.meta.changes) {
-    return NextResponse.json({ error: "You need 500 available Capi-Coins to sponsor a learner." }, { status: 409 });
+    return NextResponse.json({ error: "You need 500 available Capy-Coins to sponsor a learner." }, { status: 409 });
   }
 
   const totals = await getD1().prepare(`

@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   if (!isWritingPayload(body)) return json({ error: "Invalid writing submission." }, 400);
   const essay = body.essay.trim();
   const wordCount = essay.split(/\s+/).filter(Boolean).length;
-  if (wordCount < 40) return json({ error: "Write at least 40 words so Capi has enough language to assess." }, 422);
+  if (wordCount < 40) return json({ error: "Write at least 40 words so Capy has enough language to assess." }, 422);
 
   const apiKey = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
   if (!apiKey) return json({ error: "AI feedback is not configured yet." }, 503);
@@ -144,6 +144,6 @@ export async function POST(request: NextRequest) {
     return json({ feedback, wordCount, disclaimer: "Practice estimate only — not an official IELTS band score." });
   } catch (error) {
     console.error("Writing feedback request failed", error instanceof Error ? error.message : "Unknown error");
-    return json({ error: "Capi could not assess this writing right now. Please try again in a moment." }, 502);
+    return json({ error: "Capy could not assess this writing right now. Please try again in a moment." }, 502);
   }
 }

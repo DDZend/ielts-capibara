@@ -82,7 +82,7 @@ export const BILLING_PACKAGES: Array<{
   },
 ];
 
-export const CAPI_DISCOUNT_TIERS = [
+export const CAPY_DISCOUNT_TIERS = [
   { coins: 500, percent: 5 },
   { coins: 1_000, percent: 10 },
   { coins: 1_500, percent: 15 },
@@ -93,7 +93,7 @@ export function isBillingPlanId(value: unknown): value is BillingPlanId {
 }
 
 export function discountForCoins(coins: number) {
-  return [...CAPI_DISCOUNT_TIERS].reverse().find((tier) => coins >= tier.coins)?.percent ?? 0;
+  return [...CAPY_DISCOUNT_TIERS].reverse().find((tier) => coins >= tier.coins)?.percent ?? 0;
 }
 
 export function discountedAmount(amount: number, percent: number) {

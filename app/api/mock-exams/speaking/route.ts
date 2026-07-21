@@ -66,6 +66,6 @@ export async function POST(request: Request) {
     return json({ complete: true, band: feedback.overallBand });
   } catch (error) {
     console.error("Mock Speaking assessment failed", error instanceof Error ? error.message : "Unknown error");
-    return json({ error: "Capi could not assess this recording right now. Please record it again." }, 502);
+    return json({ error: "Capy could not assess this recording right now. Please record it again." }, 502);
   }
 }

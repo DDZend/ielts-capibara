@@ -93,11 +93,11 @@ export async function POST(request: Request) {
   }
 
   const reservation = await reserveTutorMessage(access.user.email);
-  if (!reservation.allowed) return json({ error: `You have used today’s ${reservation.usage.planLabel} Capi limit. Your messages reset at midnight UTC.`, usage: reservation.usage }, 429);
+  if (!reservation.allowed) return json({ error: `You have used today’s ${reservation.usage.planLabel} Capy limit. Your messages reset at midnight UTC.`, usage: reservation.usage }, 429);
   const apiKey = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
   if (!apiKey) {
     await releaseTutorMessage(access.user.email);
-    return json({ error: "Capi Coach is not configured yet." }, 503);
+    return json({ error: "Capy Coach is not configured yet." }, 503);
   }
 
   const lessonRefs = new Map(context.lessons.map((lesson) => [lesson.ref, lesson]));
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
         input: [
           {
             role: "developer",
-            content: [{ type: "input_text", text: `You are Capi Coach, a warm, precise IELTS Academic learning tutor inside IELTS Mastery. Respond in ${languageName(language)}.
+            content: [{ type: "input_text", text: `You are Capy Coach, a warm, precise IELTS Academic learning tutor inside IELTS Mastery. Respond in ${languageName(language)}.
 
 Grounding and truth rules:
 - Personalise the response from the supplied student record and published course material.
@@ -157,7 +157,7 @@ Teaching behaviour:
     return json({ ...exchange, usage: await getTutorUsage(access.user.email), examProtected: false });
   } catch (error) {
     await releaseTutorMessage(access.user.email);
-    console.error("Capi tutor request failed", error instanceof Error ? error.message : "Unknown error");
-    return json({ error: "Capi could not answer right now. Please try again in a moment." }, 502);
+    console.error("Capy tutor request failed", error instanceof Error ? error.message : "Unknown error");
+    return json({ error: "Capy could not answer right now. Please try again in a moment." }, 502);
   }
 }

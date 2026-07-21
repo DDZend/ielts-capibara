@@ -98,7 +98,7 @@ export const capiHelperGifts = sqliteTable(
   ],
 );
 
-export type CapiHelperGift = typeof capiHelperGifts.$inferSelect;
+export type CapyHelperGift = typeof capiHelperGifts.$inferSelect;
 
 export const lessonProgress = sqliteTable(
   "lesson_progress",

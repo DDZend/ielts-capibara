@@ -162,6 +162,6 @@ export async function POST(request: NextRequest) {
     return json({ transcript, feedback, disclaimer: "Practice estimate only — not an official IELTS band score." });
   } catch (error) {
     console.error("Speaking feedback request failed", error instanceof Error ? error.message : "Unknown error");
-    return json({ error: "Capi could not assess this recording right now. Please try again in a moment." }, 502);
+    return json({ error: "Capy could not assess this recording right now. Please try again in a moment." }, 502);
   }
 }

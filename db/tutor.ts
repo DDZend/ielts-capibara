@@ -123,7 +123,7 @@ export async function saveTutorExchange(input: {
   if (input.escalationRequired) {
     await getD1().prepare(`INSERT INTO capi_tutor_escalations
       (user_email, message_id, question, reason, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)`)
-      .bind(input.email, assistantMessage.id, input.question, input.escalationReason || "Capi requested teacher confirmation.", new Date().toISOString()).run();
+      .bind(input.email, assistantMessage.id, input.question, input.escalationReason || "Capy requested teacher confirmation.", new Date().toISOString()).run();
   }
   return { studentMessage, assistantMessage };
 }

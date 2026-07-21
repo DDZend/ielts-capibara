@@ -223,7 +223,7 @@ export function WritingClient({ userName, creatorLessons, initialLessonId }: { u
   const submitWriting = async () => {
     if (wordCount < 40) {
       setFeedbackState("error");
-      setMessage("Write at least 40 words so Capi has enough language to assess.");
+      setMessage("Write at least 40 words so Capy has enough language to assess.");
       return;
     }
     setFeedbackState("loading");
@@ -237,7 +237,7 @@ export function WritingClient({ userName, creatorLessons, initialLessonId }: { u
     const payload = response ? await response.json().catch(() => ({})) as FeedbackResponse : {};
     if (!response?.ok || !payload.feedback) {
       setFeedbackState("error");
-      setMessage(payload.error ?? "Capi could not assess this draft. Please try again.");
+      setMessage(payload.error ?? "Capy could not assess this draft. Please try again.");
       return;
     }
     setFeedback(payload.feedback);
@@ -289,7 +289,7 @@ export function WritingClient({ userName, creatorLessons, initialLessonId }: { u
         <div className="writing-hero-visual">
           <div className="hero-paper task1-paper"><small>TASK 1</small><BarChart3 /><i /><i /><i /></div>
           <div className="hero-paper task2-paper"><small>TASK 2</small><FileText /><i /><i /><i /><i /></div>
-          <img src="/capi-plan.png" alt="Capi Coach planning a writing response" />
+          <img src="/capi-plan.png" alt="Capy Coach planning a writing response" />
           <span><Sparkles /><b>Welcome, {firstName}</b><small>Choose one lesson and practise immediately.</small></span>
         </div>
       </section>
@@ -368,16 +368,16 @@ export function WritingClient({ userName, creatorLessons, initialLessonId }: { u
             <div className="writing-count-row"><span className={wordCount >= lesson.minimumWords ? "complete" : ""}><b>{wordCount}</b> / {lesson.minimumWords} words</span><small>{wordCount < 40 ? `${40 - wordCount} more words to unlock AI feedback` : wordCount < lesson.minimumWords ? "Enough for feedback — continue toward the official minimum" : "Official minimum reached"}</small></div>
 
             {feedbackState === "error" && message && <p className="writing-error" role="alert"><CircleAlert />{message}</p>}
-            <div className="writing-submit-row"><span><LockKeyhole /><small><b>Private progress</b>Your band estimate and coaching points are saved. Your essay text is not stored.</small></span><button className="button writing-primary" disabled={wordCount < 40 || feedbackState === "loading"} onClick={() => void submitWriting()}>{feedbackState === "loading" ? <><i className="writing-spinner" /> Capi is reading…</> : <>Get AI feedback <ArrowRight /></>}</button></div>
+            <div className="writing-submit-row"><span><LockKeyhole /><small><b>Private progress</b>Your band estimate and coaching points are saved. Your essay text is not stored.</small></span><button className="button writing-primary" disabled={wordCount < 40 || feedbackState === "loading"} onClick={() => void submitWriting()}>{feedbackState === "loading" ? <><i className="writing-spinner" /> Capy is reading…</> : <>Get AI feedback <ArrowRight /></>}</button></div>
 
             {feedback && <section className="writing-feedback" aria-live="polite">
-              <div className="writing-feedback-hero"><span><Sparkles /> Capi&apos;s practice feedback</span><div><small>Estimated band</small><strong>{feedback.overallBand.toFixed(1)}</strong><em>Practice only</em></div><p>{feedback.summary}</p></div>
+              <div className="writing-feedback-hero"><span><Sparkles /> Capy&apos;s practice feedback</span><div><small>Estimated band</small><strong>{feedback.overallBand.toFixed(1)}</strong><em>Practice only</em></div><p>{feedback.summary}</p></div>
               <div className="writing-feedback-criteria">{criteria.map((criterion) => <div key={criterion.label}><span><b>{criterion.label}</b><strong>{criterion.value.toFixed(1)}</strong></span><i><em style={{ width: `${Math.max(8, criterion.value / 9 * 100)}%` }} /></i></div>)}</div>
               <div className="writing-feedback-columns"><div className="strengths"><h4><Check /> What worked</h4>{feedback.strengths.map((item) => <p key={item}>{item}</p>)}</div><div className="priorities"><h4><Target /> Work on next</h4>{feedback.priorities.map((item) => <p key={item}>{item}</p>)}</div></div>
               <div className="writing-feedback-plan"><span><ListChecks /></span><div><small>A stronger answer plan</small>{feedback.improvedPlan.map((step, index) => <p key={step}><i>{index + 1}</i>{step}</p>)}</div></div>
               <div className="writing-feedback-excerpt"><span><WandSparkles /></span><div><small>Corrected example from your draft</small><p>{feedback.correctedExcerpt}</p></div></div>
               <div className="writing-feedback-phrases"><small>Useful phrases for your next draft</small>{feedback.usefulPhrases.map((phrase) => <span key={phrase}>{phrase}</span>)}</div>
-              <p className="writing-feedback-disclaimer">Practice estimate only — not an official IELTS score. A shorter draft gives Capi less evidence than a complete timed response.</p>
+              <p className="writing-feedback-disclaimer">Practice estimate only — not an official IELTS score. A shorter draft gives Capy less evidence than a complete timed response.</p>
             </section>}
           </article>
         </section>

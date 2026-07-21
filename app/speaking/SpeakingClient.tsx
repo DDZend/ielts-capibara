@@ -285,7 +285,7 @@ export function SpeakingClient({ userName, creatorLessons, initialLessonId }: { 
     const payload = response ? await response.json().catch(() => ({})) as SpeakingResponse : {};
     if (!response?.ok || !payload.feedback) {
       setFeedbackState("error");
-      setMessage(payload.error ?? "Capi could not assess this recording. Please try again.");
+      setMessage(payload.error ?? "Capy could not assess this recording. Please try again.");
       return;
     }
     setFeedback(payload.feedback);
@@ -337,7 +337,7 @@ export function SpeakingClient({ userName, creatorLessons, initialLessonId }: { 
         </div>
         <div className="speaking-hero-art">
           <span className="sound-wave" aria-hidden="true">{[12,25,38,20,31,44,24,14,34,46,29,18].map((height, index) => <i key={index} style={{ height }} />)}</span>
-          <img src="/capi-headset.png" alt="Capi Coach ready for a speaking lesson" />
+          <img src="/capi-headset.png" alt="Capy Coach ready for a speaking lesson" />
           <span className="speaking-hero-note"><Sparkles /><b>Hi {firstName}!</b><small>Let’s make your next answer stronger.</small></span>
         </div>
       </section>
@@ -355,7 +355,7 @@ export function SpeakingClient({ userName, creatorLessons, initialLessonId }: { 
             })}
           </nav>
           <div className="speaking-criteria-note">
-            <Target /><div><b>What Capi checks</b><p>Fluency, vocabulary, grammar and a limited pronunciation-clarity estimate.</p></div>
+            <Target /><div><b>What Capy checks</b><p>Fluency, vocabulary, grammar and a limited pronunciation-clarity estimate.</p></div>
           </div>
           <a className="speaking-format-link" href="https://ielts.org/take-a-test/test-types/ielts-academic-test/ielts-academic-format-speaking" target="_blank" rel="noreferrer">Official IELTS test format <ExternalLink /></a>
         </aside>
@@ -370,7 +370,7 @@ export function SpeakingClient({ userName, creatorLessons, initialLessonId }: { 
           <article className="speaking-video-card">
             <PublishedLessonVideo content={creatorContent} fallback={<div className="speaking-video-poster speaking-video-placeholder" aria-label={`Reserved video space: ${lesson.videoTitle}`}>
               <div><span><Video /> Your video lesson</span><h3>{lesson.videoTitle}</h3><p>{lesson.videoFocus}</p><b className="speaking-play"><Video /> Video coming soon</b></div>
-              <img src="/capi-official.png" alt="Capi Coach beside the future lesson video" />
+              <img src="/capi-official.png" alt="Capy Coach beside the future lesson video" />
             </div>} />
             <footer><Clock3 /> {creatorContent?.videoUrl ? "Watch the teacher lesson, then complete the three activities." : "This space is ready for your original explanatory video when filming is complete."}</footer>
           </article>
@@ -418,7 +418,7 @@ export function SpeakingClient({ userName, creatorLessons, initialLessonId }: { 
               <button className="record-main" onClick={isRecording ? stopRecording : startRecording} aria-label={isRecording ? "Stop recording" : audioBlob ? "Record again" : "Start recording"}>
                 {isRecording ? <Square fill="currentColor" /> : audioBlob ? <RotateCcw /> : <Mic2 />}
               </button>
-              <div className="record-copy"><span><b>{isRecording ? "Recording your answer…" : audioBlob ? "Recording ready" : "Tap to start speaking"}</b><small>{isRecording ? "Stop when you have finished" : audioBlob ? "Listen before asking Capi to assess it" : "Your browser will ask for microphone permission"}</small></span><strong>{formatTime(seconds)}</strong></div>
+              <div className="record-copy"><span><b>{isRecording ? "Recording your answer…" : audioBlob ? "Recording ready" : "Tap to start speaking"}</b><small>{isRecording ? "Stop when you have finished" : audioBlob ? "Listen before asking Capy to assess it" : "Your browser will ask for microphone permission"}</small></span><strong>{formatTime(seconds)}</strong></div>
               <div className="record-bars" aria-hidden="true">{[17,29,12,37,23,43,19,33,14,39,25,31,16,35,21,28].map((height, index) => <i key={index} style={{ height: isRecording ? height : 8 }} />)}</div>
             </div>
 
@@ -428,12 +428,12 @@ export function SpeakingClient({ userName, creatorLessons, initialLessonId }: { 
 
             <div className="feedback-submit-row">
               <span><LockKeyhole /><small><b>Private progress</b>Your band estimate and coaching points are saved. Audio and transcript are not stored.</small></span>
-              <button className="button speaking-primary" disabled={!audioBlob || isRecording || feedbackState === "loading"} onClick={() => void submitRecording()}>{feedbackState === "loading" ? <><i className="speaking-spinner" /> Capi is assessing…</> : <>Get AI feedback <ArrowRight /></>}</button>
+              <button className="button speaking-primary" disabled={!audioBlob || isRecording || feedbackState === "loading"} onClick={() => void submitRecording()}>{feedbackState === "loading" ? <><i className="speaking-spinner" /> Capy is assessing…</> : <>Get AI feedback <ArrowRight /></>}</button>
             </div>
 
             {feedback && <section className="speaking-feedback" aria-live="polite">
               <div className="feedback-hero">
-                <span><Sparkles /> Capi&apos;s practice feedback</span><div><small>Estimated band</small><strong>{feedback.overallBand.toFixed(1)}</strong><em>Practice only</em></div><p>{feedback.summary}</p>
+                <span><Sparkles /> Capy&apos;s practice feedback</span><div><small>Estimated band</small><strong>{feedback.overallBand.toFixed(1)}</strong><em>Practice only</em></div><p>{feedback.summary}</p>
               </div>
               <div className="feedback-criteria">
                 {criteria.map((criterion) => <div key={criterion.label}><span><b>{criterion.label}</b><strong>{criterion.value.toFixed(1)}</strong></span><i><em style={{ width: `${Math.max(8, criterion.value / 9 * 100)}%` }} /></i></div>)}

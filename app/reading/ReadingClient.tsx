@@ -399,7 +399,7 @@ export function ReadingClient({ userName, creatorLessons, initialLessonId }: { u
         <div className="reading-hero-visual">
           <div className="reading-hero-card card-one"><Search /><span><small>STEP 1</small><b>Find the claim</b></span></div>
           <div className="reading-hero-card card-two"><Target /><span><small>STEP 2</small><b>Verify evidence</b></span></div>
-          <img src="/capi-official.png" alt="Capi Coach helping with a reading lesson" />
+          <img src="/capi-official.png" alt="Capy Coach helping with a reading lesson" />
           <span><Check /><b>{completed.length} of 14 practised</b><small>Saved to your learning journey</small></span>
         </div>
       </section>
@@ -445,14 +445,14 @@ export function ReadingClient({ userName, creatorLessons, initialLessonId }: { u
           <div className="reading-after-video"><span>AFTER THE VIDEO</span><i /><small>Learn the method, read the source-based text, then check your evidence.</small></div>
 
           <section className="reading-strategy-card">
-            <header><span><Lightbulb /></span><div><small>CAPI&apos;S STRATEGY</small><h3>A three-step route to the answer</h3></div></header>
+            <header><span><Lightbulb /></span><div><small>CAPY&apos;S STRATEGY</small><h3>A three-step route to the answer</h3></div></header>
             <div className="reading-strategy-steps">{lesson.strategy.map((step, index) => <span key={step}><i>{index + 1}</i><b>{step}</b>{index < 2 && <ArrowRight />}</span>)}</div>
             <footer><p><CircleAlert /><span><small>TRAP TO AVOID</small>{lesson.trap}</span></p><p><Timer /><span><small>TIMING TIP</small>{lesson.timing}</span></p></footer>
           </section>
 
           <section className="reading-practice-card">
             <header><span><BookOpen /></span><div><small>SOURCE-BASED PRACTICE</small><h3>{lesson.passageTitle}</h3></div><a href={lesson.sourceUrl} target="_blank" rel="noreferrer">Adapted from {lesson.sourceName} <ExternalLink /></a></header>
-            <div className="reading-source-note"><CircleAlert /><span><b>Original adaptation, authentic source</b>This practice passage was written by Capi from facts in <a href={lesson.sourceUrl} target="_blank" rel="noreferrer">{lesson.sourceTitle}</a>. It is not an official IELTS passage and does not reproduce the source verbatim.</span></div>
+            <div className="reading-source-note"><CircleAlert /><span><b>Original adaptation, authentic source</b>This practice passage was written by Capy from facts in <a href={lesson.sourceUrl} target="_blank" rel="noreferrer">{lesson.sourceTitle}</a>. It is not an official IELTS passage and does not reproduce the source verbatim.</span></div>
             <article className="reading-text">{lesson.passage.map((paragraph) => <p key={paragraph.label}><b>{paragraph.label}</b><span>{paragraph.text}</span></p>)}</article>
 
             <div className="reading-question">

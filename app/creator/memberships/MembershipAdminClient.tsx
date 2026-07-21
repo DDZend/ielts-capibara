@@ -56,8 +56,8 @@ export function MembershipAdminClient({ userName, initialSnapshot }: { userName:
         </form>
 
         <form onSubmit={(event) => { event.preventDefault(); void act("promo", { action: "create_promo", code: promo.code, percent: Number(promo.percent), maxRedemptions: Number(promo.maxRedemptions), expiresAt: promo.expiresAt || null }, "Promotion code created."); }}>
-          <header><BadgePercent /><div><small>PROMOTIONS</small><h2>Create a checkout code</h2><p>Codes apply once to the first payment and never replace the Capi-Coin discount.</p></div></header>
-          <label><span>Code</span><input required minLength={3} maxLength={32} value={promo.code} onChange={(event) => setPromo((current) => ({ ...current, code: event.target.value.toUpperCase() }))} placeholder="CAPI10" /></label>
+          <header><BadgePercent /><div><small>PROMOTIONS</small><h2>Create a checkout code</h2><p>Codes apply once to the first payment and never replace the Capy-Coin discount.</p></div></header>
+          <label><span>Code</span><input required minLength={3} maxLength={32} value={promo.code} onChange={(event) => setPromo((current) => ({ ...current, code: event.target.value.toUpperCase() }))} placeholder="CAPY10" /></label>
           <div><label><span>Discount</span><select value={promo.percent} onChange={(event) => setPromo((current) => ({ ...current, percent: event.target.value }))}>{[5, 10, 15, 20, 25, 30, 40, 50].map((value) => <option value={value} key={value}>{value}%</option>)}</select></label><label><span>Maximum uses</span><input type="number" min="1" max="10000" value={promo.maxRedemptions} onChange={(event) => setPromo((current) => ({ ...current, maxRedemptions: event.target.value }))} placeholder="Unlimited" /></label></div>
           <label><span>Expires</span><input type="date" value={promo.expiresAt} onChange={(event) => setPromo((current) => ({ ...current, expiresAt: event.target.value }))} /></label>
           <button disabled={Boolean(busy)}>{busy === "promo" ? <LoaderCircle className="spin" /> : <BadgePercent />} Create promotion</button>

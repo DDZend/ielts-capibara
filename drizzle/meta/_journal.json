@@ -85,6 +85,13 @@
       "when": 1784625194801,
       "tag": "0011_parallel_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1784626499741,
+      "tag": "0012_rename_capy_brand",
+      "breakpoints": true
     }
   ]
 }

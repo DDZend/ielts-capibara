@@ -20,7 +20,7 @@ export function MockTestStudioClient({ userName, initialDashboard, initialLibrar
   const [selected, setSelected] = useState<string[]>([]);
   const [activeSkill, setActiveSkill] = useState<MockSkill>("Reading");
   const [tab, setTab] = useState<"builder" | "moderation" | "analytics">("builder");
-  const [title, setTitle] = useState("Capi Weekend IELTS Mock");
+  const [title, setTitle] = useState("Capy Weekend IELTS Mock");
   const [label, setLabel] = useState(`Version ${String.fromCharCode(65 + initialDashboard.versions.length)}`);
   const [description, setDescription] = useState("A complete four-skill weekend benchmark.");
   const [testId, setTestId] = useState<number | null>(initialDashboard.tests[0]?.id ?? null);
