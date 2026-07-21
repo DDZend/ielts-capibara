@@ -146,6 +146,41 @@ export const aiPracticeAssessments = sqliteTable(
   ],
 );
 
+export const capiTutorMessages = sqliteTable(
+  "capi_tutor_messages",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }), userEmail: text("user_email").notNull(),
+    role: text("role").notNull(), content: text("content").notNull(), language: text("language").notNull().default("en"),
+    intent: text("intent").notNull().default("general"), citationsJson: text("citations_json").notNull().default("[]"),
+    practiceJson: text("practice_json"), confidence: real("confidence"),
+    escalationRequired: integer("escalation_required", { mode: "boolean" }).notNull().default(false), createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("capi_tutor_messages_user_created_idx").on(table.userEmail, table.createdAt)],
+);
+
+export const capiTutorUsage = sqliteTable(
+  "capi_tutor_usage",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }), userEmail: text("user_email").notNull(),
+    usageDate: text("usage_date").notNull(), messageCount: integer("message_count").notNull().default(0), updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [uniqueIndex("capi_tutor_usage_user_date_uidx").on(table.userEmail, table.usageDate)],
+);
+
+export const capiTutorEscalations = sqliteTable(
+  "capi_tutor_escalations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }), userEmail: text("user_email").notNull(),
+    messageId: integer("message_id").notNull(), question: text("question").notNull(), reason: text("reason").notNull(),
+    status: text("status").notNull().default("pending"), teacherReply: text("teacher_reply"), resolvedBy: text("resolved_by"),
+    createdAt: text("created_at").notNull(), resolvedAt: text("resolved_at"),
+  },
+  (table) => [
+    index("capi_tutor_escalations_status_created_idx").on(table.status, table.createdAt),
+    index("capi_tutor_escalations_user_created_idx").on(table.userEmail, table.createdAt),
+  ],
+);
+
 export type LessonProgress = typeof lessonProgress.$inferSelect;
 export type AiPracticeAssessment = typeof aiPracticeAssessments.$inferSelect;
 

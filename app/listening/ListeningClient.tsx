@@ -316,10 +316,10 @@ const lessons: Lesson[] = [
 
 const normalise = (value: string) => value.trim().toLowerCase().replace(/[£$,]/g, "").replace(/[.]+$/, "").replace(/\s+/g, " ");
 
-export function ListeningClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+export function ListeningClient({ userName, creatorLessons, initialLessonId }: { userName: string; creatorLessons: StudentLessonContent[]; initialLessonId?: string }) {
   const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
   const [filter, setFilter] = useState<FilterId>("all");
-  const [activeId, setActiveId] = useState<LessonId>("form-completion");
+  const [activeId, setActiveId] = useState<LessonId>(() => courseLessons.find((item) => item.id === initialLessonId)?.id ?? "form-completion");
   const [mode, setMode] = useState<"exam" | "study">("exam");
   const [speed, setSpeed] = useState(1);
   const [playing, setPlaying] = useState(false);

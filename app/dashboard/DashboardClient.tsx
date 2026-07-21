@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
+  ExternalLink,
   Flame,
   Gift,
   Headphones,
@@ -28,6 +29,7 @@ import {
   PenLine,
   Play,
   Send,
+  ShieldCheck,
   Settings,
   Sparkles,
   Star,
@@ -40,6 +42,7 @@ import {
 import type { SavedAssessment, Skill } from "../../lib/assessment";
 import type { SavedMock } from "../../lib/mock";
 import { isWeekend, weekStart } from "../../lib/study-plan";
+import { TUTOR_STARTERS, type TutorLanguage, type TutorMessageView, type TutorUsage } from "../../lib/capi-tutor";
 
 type DashboardTask = {
   id: number;
@@ -127,9 +130,13 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
   const [giftCopied, setGiftCopied] = useState(false);
   const [sessionGifts, setSessionGifts] = useState(0);
   const [reportShared, setReportShared] = useState(false);
-  const [messages, setMessages] = useState<{ role: "capi" | "student"; text: string }[]>([
-    { role: "capi", text: `Hi! I’m focusing your plan on ${adaptivePriority.toLowerCase()}. What would you like help with?` },
-  ]);
+  const [tutorLanguage, setTutorLanguage] = useState<TutorLanguage>("en");
+  const [tutorMessages, setTutorMessages] = useState<TutorMessageView[]>([]);
+  const [tutorUsage, setTutorUsage] = useState<TutorUsage | null>(null);
+  const [tutorLoaded, setTutorLoaded] = useState(false);
+  const [tutorState, setTutorState] = useState<"idle" | "loading" | "sending">("idle");
+  const [tutorError, setTutorError] = useState("");
+  const tutorOptimisticId = useRef(0);
   const firstName = userName.split(/[\s@]/)[0] || "Student";
   const score = latest?.overallBand ?? 0;
   const progress = latest ? Math.min(100, Math.round((score / targetBand) * 100)) : 0;
@@ -165,19 +172,44 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
     if (response?.ok) window.setTimeout(() => setTargetState("idle"), 1800);
   };
 
-  const askCapi = (question: string) => {
+  const openTutor = () => {
+    setChatOpen(true);
+    if (tutorLoaded || tutorState === "loading") return;
+    setTutorState("loading");
+    setTutorError("");
+    void fetch("/api/capi-tutor").then(async (response) => {
+      const data = await response.json() as { messages?: TutorMessageView[]; usage?: TutorUsage; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Capi Coach could not load your conversation.");
+      setTutorMessages(data.messages ?? []);
+      setTutorUsage(data.usage ?? null);
+      setTutorLoaded(true);
+    }).catch((caught) => {
+      setTutorError(caught instanceof Error ? caught.message : "Capi Coach could not load.");
+    }).finally(() => setTutorState("idle"));
+  };
+
+  const askCapi = async (question: string) => {
     const clean = question.trim();
-    if (!clean) return;
-    const lower = clean.toLowerCase();
-    const reply = lower.includes("warm-up")
-      ? "Try this: speak for one minute about your morning, then repeat it using however, because and for example. Keep the second version calmer and clearer."
-      : lower.includes("reach") || lower.includes("band")
-        ? `Your clearest next step is consistent ${latest?.prioritySkill.toLowerCase() ?? "four-skill"} practice. Complete today’s short plan, review one mistake, and reassess after four weeks.`
-        : lower.includes("lesson")
-          ? "Today’s long-turn lesson uses a simple structure: answer directly, add two useful details, then finish with why the topic matters to you."
-          : "That’s a good question. Start with one clear answer, add a specific example, and review whether every sentence supports the task.";
-    setMessages((current) => [...current, { role: "student", text: clean }, { role: "capi", text: reply }]);
+    if (!clean || tutorState === "sending") return;
+    const optimisticId = --tutorOptimisticId.current;
+    const optimistic: TutorMessageView = { id: optimisticId, role: "student", content: clean, language: tutorLanguage, intent: "pending", citations: [], practice: null, confidence: null, escalationRequired: false, createdAt: new Date().toISOString() };
+    setTutorMessages((current) => [...current, optimistic]);
     setChatInput("");
+    setTutorError("");
+    setTutorState("sending");
+    try {
+      const response = await fetch("/api/capi-tutor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: clean, language: tutorLanguage }) });
+      const data = await response.json() as { studentMessage?: TutorMessageView; assistantMessage?: TutorMessageView; usage?: TutorUsage; error?: string };
+      if (!response.ok || !data.studentMessage || !data.assistantMessage) throw new Error(data.error ?? "Capi could not answer that question.");
+      setTutorMessages((current) => [...current.filter((message) => message.id !== optimisticId), data.studentMessage!, data.assistantMessage!]);
+      if (data.usage) setTutorUsage(data.usage);
+    } catch (caught) {
+      setTutorMessages((current) => current.filter((message) => message.id !== optimisticId));
+      setChatInput(clean);
+      setTutorError(caught instanceof Error ? caught.message : "Capi could not answer that question.");
+    } finally {
+      setTutorState("idle");
+    }
   };
 
   const toggleTask = async (task: DashboardTask) => {
@@ -218,6 +250,12 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
     window.setTimeout(() => setReportShared(false), 1800);
   };
 
+  const tutorCopy = {
+    en: { ready: "Personal tutor online", greeting: `Hi ${firstName}! I know your target, recent results and today’s plan. What shall we work on?`, placeholder: "Ask about a mistake, lesson or practice…", sent: "Sent to your teacher", sources: "Recommended lessons", practice: "Quick practice", criteria: "Success checklist" },
+    ru: { ready: "Личный тьютор онлайн", greeting: `Привет, ${firstName}! Я знаю твою цель, последние результаты и план на сегодня. Над чем поработаем?`, placeholder: "Спросите об ошибке, уроке или практике…", sent: "Отправлено преподавателю", sources: "Рекомендуемые уроки", practice: "Короткая практика", criteria: "Критерии успеха" },
+    kk: { ready: "Жеке тьютор онлайн", greeting: `Сәлем, ${firstName}! Мақсатыңды, соңғы нәтижелеріңді және бүгінгі жоспарыңды білемін. Немен жұмыс істейміз?`, placeholder: "Қате, сабақ немесе жаттығу туралы сұраңыз…", sent: "Мұғалімге жіберілді", sources: "Ұсынылған сабақтар", practice: "Қысқа жаттығу", criteria: "Сәттілік критерийлері" },
+  }[tutorLanguage];
+
   return (
     <main className="dashboard-shell">
       <aside className={`dashboard-sidebar ${sidebarOpen ? "open" : ""}`}>
@@ -237,7 +275,7 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
           <div className="nav-line" />
           <button className="nav-item" onClick={() => { setTargetOpen(true); setSidebarOpen(false); document.getElementById("dashboard-top")?.scrollIntoView(); }}><span><Settings /></span>Target settings</button>
         </nav>
-        <button className="sidebar-help" onClick={() => { setChatOpen(true); setSidebarOpen(false); }}><HelpCircle /><span><b>Need help?</b><small>Ask Capi Coach</small></span><ChevronRight /></button>
+        <button className="sidebar-help" onClick={() => { openTutor(); setSidebarOpen(false); }}><HelpCircle /><span><b>Need help?</b><small>Ask Capi Coach</small></span><ChevronRight /></button>
       </aside>
       {sidebarOpen && <button className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Close navigation" />}
 
@@ -389,7 +427,7 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
 
               <section className="challenge-card dashboard-card"><div><span className="eyebrow light"><Zap /> Capi challenge</span><h2>Three focused days</h2><p>Complete one planned lesson on three different days this week.</p><div className="challenge-progress">{[1,2,3].map((day) => <span key={day} className={liveDays >= day ? "done" : ""}>{liveDays >= day ? <Check /> : day}</span>)}</div><small>{Math.min(liveDays, 3)} of 3 days complete</small></div><img src="/capi-challenge.png" alt="Capi Coach wearing a blue headband with a checklist and trophy" /></section>
 
-              <section className="capi-advice-card dashboard-card"><div className="advice-heading"><img src="/capi-advice.png" alt="Capi Coach with a magnifying glass and lightbulb" /><span><small>CAPI COACH</small><b>Today&apos;s advice</b></span></div><p>{latest ? <>Your <b>{latest.strengthSkill.toLowerCase()}</b> score gives you a strong base. Your recent saved work now points to <b>{adaptivePriority.toLowerCase()}</b> as the clearest place for the next improvement.</> : <>Take the short assessment first. I&apos;ll use your four module estimates to choose the clearest place to begin.</>}</p><button onClick={() => setChatOpen(true)}>Ask Capi a question <ArrowRight /></button></section>
+              <section className="capi-advice-card dashboard-card"><div className="advice-heading"><img src="/capi-advice.png" alt="Capi Coach with a magnifying glass and lightbulb" /><span><small>CAPI COACH</small><b>Today&apos;s advice</b></span></div><p>{latest ? <>Your <b>{latest.strengthSkill.toLowerCase()}</b> score gives you a strong base. Your recent saved work now points to <b>{adaptivePriority.toLowerCase()}</b> as the clearest place for the next improvement.</> : <>Take the short assessment first. I&apos;ll use your four module estimates to choose the clearest place to begin.</>}</p><button onClick={openTutor}>Ask Capi a question <ArrowRight /></button></section>
 
               <section className="live-class-card dashboard-card" id="live-class"><div className="live-image"><span>LIVE CLASS</span><img src="/capi-headset.png" alt="Capi Coach wearing a coaching headset" /></div><div><span className="eyebrow">Tuesday · 18:30</span><h3>Speaking Part 2: confident long turns</h3><p><Video /> With Anna Müller · 45 min</p><button className="button soft" aria-pressed={reserved} onClick={() => setReserved((value) => !value)}>{reserved ? <><Check /> Place reserved</> : <>Reserve my place <ArrowRight /></>}</button></div></section>
             </aside>
@@ -397,8 +435,28 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
         </div>
       </div>
 
-      <button className="floating-capi" onClick={() => setChatOpen(true)} aria-label="Open Capi Coach chat"><img src="/capi-profile.png" alt="" /><span>Ask Capi</span><MessageCircle /></button>
-      {chatOpen && <section className="capi-chat" aria-label="Capi Coach chat"><header><img src="/capi-profile.png" alt="" /><span><b>Capi Coach</b><small><i /> Ready to help</small></span><button onClick={() => setChatOpen(false)} aria-label="Close chat"><X /></button></header><div className="chat-body"><div className="chat-messages" aria-live="polite">{messages.map((message, index) => <p key={`${message.role}-${index}`} className={message.role}>{message.text}</p>)}</div><div className="chat-suggestions"><button onClick={() => askCapi("Explain today’s lesson")}>Explain today&apos;s lesson</button><button onClick={() => askCapi(`How do I reach Band ${targetBand.toFixed(1)}?`)}>How do I reach Band {targetBand.toFixed(1)}?</button><button onClick={() => askCapi("Give me a 5-minute warm-up")}>Give me a 5-minute warm-up</button></div></div><form onSubmit={(event) => { event.preventDefault(); askCapi(chatInput); }}><input value={chatInput} onChange={(event) => setChatInput(event.target.value)} aria-label="Message Capi Coach" placeholder="Ask about your study plan…" /><button aria-label="Send message" disabled={!chatInput.trim()}><Send /></button></form></section>}
+      <button className="floating-capi" onClick={openTutor} aria-label="Open Capi Coach chat"><img src="/capi-profile.png" alt="" /><span>Ask Capi</span><MessageCircle /></button>
+      {chatOpen && <section className="capi-chat" aria-label="Capi Coach personalised tutor">
+        <header><img src="/capi-profile.png" alt="" /><span><b>Capi Coach</b><small><i /> {tutorCopy.ready}</small></span>{tutorUsage && <em>{tutorUsage.used}/{tutorUsage.limit}<small>{tutorUsage.planLabel}</small></em>}<button onClick={() => setChatOpen(false)} aria-label="Close chat"><X /></button></header>
+        <div className="tutor-toolbar" aria-label="Tutor language"><Languages />{([['en', 'Eng'], ['ru', 'Рус'], ['kk', 'Қаз']] as Array<[TutorLanguage, string]>).map(([value, label]) => <button type="button" className={tutorLanguage === value ? "active" : ""} aria-pressed={tutorLanguage === value} onClick={() => setTutorLanguage(value)} key={value}>{label}</button>)}<span><ShieldCheck /> Course-safe</span></div>
+        <div className="chat-body">
+          <div className="chat-messages" aria-live="polite">
+            {!tutorMessages.length && tutorState !== "loading" && <article className="chat-message capi"><p>{tutorCopy.greeting}</p></article>}
+            {tutorState === "loading" && <div className="tutor-loading"><span /><span /><span /> Loading your learning record</div>}
+            {tutorMessages.map((message) => <article key={message.id} className={`chat-message ${message.role}`}>
+              {message.role === "teacher" && <small className="tutor-role">Teacher follow-up</small>}
+              <p>{message.content}</p>
+              {message.practice && <section className="tutor-practice"><small>{tutorCopy.practice} · {message.practice.durationMinutes} min</small><b>{message.practice.title}</b><p>{message.practice.instructions}</p><blockquote>{message.practice.prompt}</blockquote>{message.practice.successCriteria.length > 0 && <details><summary>{tutorCopy.criteria}</summary><ul>{message.practice.successCriteria.map((criterion) => <li key={criterion}>{criterion}</li>)}</ul></details>}</section>}
+              {message.citations.length > 0 && <div className="tutor-citations"><small>{tutorCopy.sources}</small>{message.citations.map((citation) => <Link key={`${citation.module}-${citation.lessonId}`} href={citation.href}><span>{citation.module}</span>{citation.title}<ExternalLink /></Link>)}</div>}
+              {message.escalationRequired && <span className="tutor-escalation"><ShieldCheck /> {tutorCopy.sent}</span>}
+            </article>)}
+            {tutorState === "sending" && <article className="chat-message capi tutor-thinking"><span /><span /><span /> Capi is checking your course and progress…</article>}
+          </div>
+          {tutorError && <p className="tutor-error">{tutorError}</p>}
+          <div className="chat-suggestions">{TUTOR_STARTERS[tutorLanguage].map((starter) => <button type="button" onClick={() => { if (starter.endsWith(": ")) setChatInput(starter); else void askCapi(starter); }} key={starter}>{starter}</button>)}</div>
+        </div>
+        <form onSubmit={(event) => { event.preventDefault(); void askCapi(chatInput); }}><input maxLength={2000} value={chatInput} onChange={(event) => setChatInput(event.target.value)} aria-label="Message Capi Coach" placeholder={tutorCopy.placeholder} disabled={tutorState === "sending" || tutorUsage?.remaining === 0} /><button aria-label="Send message" disabled={!chatInput.trim() || tutorState === "sending" || tutorUsage?.remaining === 0}><Send /></button></form>
+      </section>}
     </main>
   );
 }

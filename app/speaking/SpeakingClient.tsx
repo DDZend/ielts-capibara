@@ -152,9 +152,9 @@ const lessons: Lesson[] = [
 
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-export function SpeakingClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+export function SpeakingClient({ userName, creatorLessons, initialLessonId }: { userName: string; creatorLessons: StudentLessonContent[]; initialLessonId?: string }) {
   const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
-  const [activeId, setActiveId] = useState<PartId>("part1");
+  const [activeId, setActiveId] = useState<PartId>(() => courseLessons.find((item) => item.id === initialLessonId)?.id ?? "part1");
   const [quizChoices, setQuizChoices] = useState<Partial<Record<PartId, string>>>({});
   const [checkedQuizzes, setCheckedQuizzes] = useState<Partial<Record<PartId, boolean>>>({});
   const [savedPhrases, setSavedPhrases] = useState<string[]>([]);

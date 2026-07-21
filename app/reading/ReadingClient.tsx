@@ -339,10 +339,10 @@ const lessons: ReadingLesson[] = [
   },
 ];
 
-export function ReadingClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+export function ReadingClient({ userName, creatorLessons, initialLessonId }: { userName: string; creatorLessons: StudentLessonContent[]; initialLessonId?: string }) {
   const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
   const [filter, setFilter] = useState<FilterId>("all");
-  const [activeId, setActiveId] = useState<LessonId>("multiple-choice");
+  const [activeId, setActiveId] = useState<LessonId>(() => courseLessons.find((item) => item.id === initialLessonId)?.id ?? "multiple-choice");
   const [choices, setChoices] = useState<Partial<Record<LessonId, string>>>({});
   const [checked, setChecked] = useState<Partial<Record<LessonId, boolean>>>({});
   const [evidenceOpen, setEvidenceOpen] = useState<Partial<Record<LessonId, boolean>>>({});

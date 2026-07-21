@@ -32,6 +32,7 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/mock-results/route.ts", root)),
     access(new URL("app/api/speaking-feedback/route.ts", root)),
     access(new URL("app/api/writing-feedback/route.ts", root)),
+    access(new URL("app/api/capi-tutor/route.ts", root)),
     access(new URL("app/api/capi-helper/route.ts", root)),
     access(new URL("app/api/lesson-progress/route.ts", root)),
     access(new URL("app/api/billing/checkout/route.ts", root)),
@@ -42,13 +43,65 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/creator/media/route.ts", root)),
     access(new URL("app/api/classes/route.ts", root)),
     access(new URL("app/api/creator/classes/route.ts", root)),
+    access(new URL("app/api/creator/capi-coach/route.ts", root)),
     access(new URL("app/api/mock-exams/route.ts", root)),
     access(new URL("app/api/mock-exams/writing/route.ts", root)),
     access(new URL("app/api/mock-exams/speaking/route.ts", root)),
     access(new URL("app/api/mock-exams/recording/route.ts", root)),
     access(new URL("app/api/creator/mock-tests/route.ts", root)),
     access(new URL("app/api/media/[id]/route.ts", root)),
+    access(new URL("app/creator/capi-coach/page.tsx", root)),
   ]);
+});
+
+test("Capi Coach is a grounded personalised tutor with limits, exam safety and teacher escalation", async () => {
+  const [api, database, schema, runtimeSchema, migration, dashboard, supportApi, supportPage, supportUi, tutorConfig] = await Promise.all([
+    read("app/api/capi-tutor/route.ts"),
+    read("db/tutor.ts"),
+    read("db/schema.ts"),
+    read("db/index.ts"),
+    read("drizzle/0011_parallel_purple_man.sql"),
+    read("app/dashboard/DashboardClient.tsx"),
+    read("app/api/creator/capi-coach/route.ts"),
+    read("app/creator/capi-coach/page.tsx"),
+    read("app/creator/capi-coach/CapiCoachSupportClient.tsx"),
+    read("lib/capi-tutor.ts"),
+  ]);
+  assert.match(api, /getApiLearningUser/);
+  assert.match(api, /OPENAI_API_KEY/);
+  assert.match(api, /api\.openai\.com\/v1\/responses/);
+  assert.match(api, /json_schema/);
+  assert.match(api, /context\.activeExam/);
+  assert.match(api, /Never bluff/);
+  assert.match(api, /Never reveal or reconstruct protected answers/);
+  assert.match(api, /ai\.confidence < 0\.55/);
+  assert.match(database, /getCreatorLessons/);
+  assert.match(database, /lesson\.status === "published"/);
+  assert.match(database, /mockHistory/);
+  assert.match(database, /recentMistakes/);
+  assert.doesNotMatch(database, /answerKey|correctAnswers|sampleAnswer/);
+  for (const table of ["capi_tutor_messages", "capi_tutor_usage", "capi_tutor_escalations"]) {
+    for (const source of [schema, runtimeSchema, migration]) assert.match(source, new RegExp(table.replaceAll("_", "_?"), "i"));
+  }
+  for (const plan of ["platinum", "gold", "silver", "starter_week", "sponsored"]) assert.match(tutorConfig, new RegExp(plan));
+  for (const language of ["Eng", "Рус", "Қаз"]) assert.match(dashboard, new RegExp(language));
+  assert.match(dashboard, /fetch\("\/api\/capi-tutor"/);
+  assert.match(dashboard, /message\.practice/);
+  assert.match(dashboard, /message\.citations/);
+  assert.match(dashboard, /message\.escalationRequired/);
+  assert.match(supportApi, /getApiCreatorUser\("classes"\)/);
+  assert.match(supportPage, /requireCreatorUser\("\/creator\/capi-coach", "classes"\)/);
+  assert.match(supportUi, /Your reply is now visible in the student’s Capi Coach conversation/);
+});
+
+test("Capi Coach lesson recommendations open the exact published lesson", async () => {
+  const files = await Promise.all(["speaking", "writing", "reading", "listening"].flatMap((module) => [read(`app/${module}/page.tsx`), read(`app/${module}/${module[0].toUpperCase()}${module.slice(1)}Client.tsx`)]));
+  for (let index = 0; index < files.length; index += 2) {
+    assert.match(files[index], /searchParams: Promise<\{ lesson\?: string \}>/);
+    assert.match(files[index], /initialLessonId=\{lesson\}/);
+    assert.match(files[index + 1], /initialLessonId\?: string/);
+    assert.match(files[index + 1], /item\.id === initialLessonId/);
+  }
 });
 
 test("daily study tasks and weekly mocks are owned by the signed-in student", async () => {

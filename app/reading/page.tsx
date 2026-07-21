@@ -11,9 +11,10 @@ export const metadata: Metadata = {
   description: "Master all 14 IELTS Academic Reading task types with practical strategies and source-linked practice texts.",
 };
 
-export default async function ReadingPage() {
+export default async function ReadingPage({ searchParams }: { searchParams: Promise<{ lesson?: string }> }) {
+  const { lesson } = await searchParams;
   const user = await requireLearningAccess("/reading");
   const creatorLessons = await getStudentCreatorLessons("Reading");
   if (creatorLessons.length && !creatorLessons.some((lesson) => lesson.status === "published")) return <CourseUnavailable module="Reading" />;
-  return <ReadingClient userName={user.displayName} creatorLessons={creatorLessons} />;
+  return <ReadingClient userName={user.displayName} creatorLessons={creatorLessons} initialLessonId={lesson} />;
 }

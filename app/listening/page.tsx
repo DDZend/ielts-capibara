@@ -11,9 +11,10 @@ export const metadata: Metadata = {
   description: "Master the four IELTS Listening parts through twelve focused video lessons, guided audio practice and evidence-based review.",
 };
 
-export default async function ListeningPage() {
+export default async function ListeningPage({ searchParams }: { searchParams: Promise<{ lesson?: string }> }) {
+  const { lesson } = await searchParams;
   const user = await requireLearningAccess("/listening");
   const creatorLessons = await getStudentCreatorLessons("Listening");
   if (creatorLessons.length && !creatorLessons.some((lesson) => lesson.status === "published")) return <CourseUnavailable module="Listening" />;
-  return <ListeningClient userName={user.displayName} creatorLessons={creatorLessons} />;
+  return <ListeningClient userName={user.displayName} creatorLessons={creatorLessons} initialLessonId={lesson} />;
 }

@@ -27,6 +27,7 @@ import {
   FileText,
   Headphones,
   LoaderCircle,
+  MessageSquareReply,
   Mic2,
   PenLine,
   Save,
@@ -195,7 +196,7 @@ export function CreatorStudioClient({ userName, isOwner, permissions, initialLes
 
       <section className="creator-hero">
         <div><span className="creator-kicker"><CloudUpload /> CREATOR STUDIO</span><h1>Publish the course without touching code.</h1><p>Upload your original media, add learning materials, control lesson order and decide exactly what students can see.</p></div>
-        <aside><strong>{publishedCount}<small>published lessons</small></strong><strong>{lessons.length - publishedCount}<small>private or hidden</small></strong><Link href={modulePaths[activeModule]} target="_blank"><Eye /> Preview {activeModule}</Link>{permissions.includes("mocks") && <Link href="/creator/mock-tests"><FileStack /> Mock-Test Studio</Link>}{permissions.includes("classes") && <Link href="/creator/classes"><CalendarDays /> Students & classes</Link>}{permissions.includes("memberships") && <Link href="/creator/memberships"><CreditCard /> Memberships</Link>}{isOwner && <Link href="/creator/team"><UserCog /> Teacher team</Link>}</aside>
+        <aside><strong>{publishedCount}<small>published lessons</small></strong><strong>{lessons.length - publishedCount}<small>private or hidden</small></strong><Link href={modulePaths[activeModule]} target="_blank"><Eye /> Preview {activeModule}</Link>{permissions.includes("mocks") && <Link href="/creator/mock-tests"><FileStack /> Mock-Test Studio</Link>}{permissions.includes("classes") && <Link href="/creator/classes"><CalendarDays /> Students & classes</Link>}{permissions.includes("classes") && <Link href="/creator/capi-coach"><MessageSquareReply /> Capi support queue</Link>}{permissions.includes("memberships") && <Link href="/creator/memberships"><CreditCard /> Memberships</Link>}{isOwner && <Link href="/creator/team"><UserCog /> Teacher team</Link>}</aside>
       </section>
 
       <section className="creator-workspace">

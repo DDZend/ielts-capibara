@@ -11,9 +11,10 @@ export const metadata: Metadata = {
   description: "Learn the three IELTS Academic Speaking parts, practise useful language and get immediate AI feedback on a recorded answer.",
 };
 
-export default async function SpeakingPage() {
+export default async function SpeakingPage({ searchParams }: { searchParams: Promise<{ lesson?: string }> }) {
+  const { lesson } = await searchParams;
   const user = await requireLearningAccess("/speaking");
   const creatorLessons = await getStudentCreatorLessons("Speaking");
   if (creatorLessons.length && !creatorLessons.some((lesson) => lesson.status === "published")) return <CourseUnavailable module="Speaking" />;
-  return <SpeakingClient userName={user.displayName} creatorLessons={creatorLessons} />;
+  return <SpeakingClient userName={user.displayName} creatorLessons={creatorLessons} initialLessonId={lesson} />;
 }

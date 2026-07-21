@@ -78,6 +78,13 @@
       "when": 1784577843500,
       "tag": "0010_heavy_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1784625194801,
+      "tag": "0011_parallel_purple_man",
+      "breakpoints": true
     }
   ]
 }

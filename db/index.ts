@@ -147,6 +147,24 @@ export function ensureAppSchema() {
       getD1().prepare(
         "CREATE INDEX IF NOT EXISTS ai_practice_assessments_user_skill_created_at_idx ON ai_practice_assessments (user_email, skill, created_at)",
       ),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS capi_tutor_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL,
+        language TEXT NOT NULL DEFAULT 'en', intent TEXT NOT NULL DEFAULT 'general', citations_json TEXT NOT NULL DEFAULT '[]',
+        practice_json TEXT, confidence REAL, escalation_required INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS capi_tutor_messages_user_created_idx ON capi_tutor_messages (user_email, created_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS capi_tutor_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, usage_date TEXT NOT NULL,
+        message_count INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS capi_tutor_usage_user_date_uidx ON capi_tutor_usage (user_email, usage_date)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS capi_tutor_escalations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, message_id INTEGER NOT NULL,
+        question TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', teacher_reply TEXT,
+        resolved_by TEXT, created_at TEXT NOT NULL, resolved_at TEXT
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS capi_tutor_escalations_status_created_idx ON capi_tutor_escalations (status, created_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS capi_tutor_escalations_user_created_idx ON capi_tutor_escalations (user_email, created_at)"),
       getD1().prepare(`CREATE TABLE IF NOT EXISTS subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_email TEXT NOT NULL,

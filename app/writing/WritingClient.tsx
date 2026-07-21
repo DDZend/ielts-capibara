@@ -179,10 +179,10 @@ const lessons: WritingLesson[] = [
 const countWords = (text: string) => text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
 const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-export function WritingClient({ userName, creatorLessons }: { userName: string; creatorLessons: StudentLessonContent[] }) {
+export function WritingClient({ userName, creatorLessons, initialLessonId }: { userName: string; creatorLessons: StudentLessonContent[]; initialLessonId?: string }) {
   const courseLessons = useMemo(() => applyPublishedLessonOrder(lessons, creatorLessons), [creatorLessons]);
   const [filter, setFilter] = useState<TrackFilter>("all");
-  const [activeId, setActiveId] = useState<LessonId>("line-graph");
+  const [activeId, setActiveId] = useState<LessonId>(() => courseLessons.find((item) => item.id === initialLessonId)?.id ?? "line-graph");
   const [drafts, setDrafts] = useState<Partial<Record<LessonId, string>>>({});
   const [quizChoices, setQuizChoices] = useState<Partial<Record<LessonId, string>>>({});
   const [checkedQuizzes, setCheckedQuizzes] = useState<Partial<Record<LessonId, boolean>>>({});
