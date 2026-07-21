@@ -358,6 +358,109 @@ export const billingNotifications = sqliteTable(
   ],
 );
 
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    sourceKey: text("source_key"),
+    category: text("category").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    actionUrl: text("action_url"),
+    priority: text("priority").notNull().default("normal"),
+    status: text("status").notNull().default("unread"),
+    createdAt: text("created_at").notNull(),
+    readAt: text("read_at"),
+    openedAt: text("opened_at"),
+  },
+  (table) => [
+    uniqueIndex("notifications_source_key_uidx").on(table.sourceKey),
+    index("notifications_user_status_created_idx").on(table.userEmail, table.status, table.createdAt),
+    index("notifications_category_created_idx").on(table.category, table.createdAt),
+  ],
+);
+
+export const notificationPreferences = sqliteTable(
+  "notification_preferences",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userEmail: text("user_email").notNull(),
+    inAppEnabled: integer("in_app_enabled", { mode: "boolean" }).notNull().default(true),
+    emailEnabled: integer("email_enabled", { mode: "boolean" }).notNull().default(true),
+    upcomingClasses: integer("upcoming_classes", { mode: "boolean" }).notNull().default(true),
+    newHomework: integer("new_homework", { mode: "boolean" }).notNull().default(true),
+    homeworkDeadlines: integer("homework_deadlines", { mode: "boolean" }).notNull().default(true),
+    teacherComments: integer("teacher_comments", { mode: "boolean" }).notNull().default(true),
+    weekendMock: integer("weekend_mock", { mode: "boolean" }).notNull().default(true),
+    membership: integer("membership", { mode: "boolean" }).notNull().default(true),
+    sponsoredPass: integer("sponsored_pass", { mode: "boolean" }).notNull().default(true),
+    weeklyReport: integer("weekly_report", { mode: "boolean" }).notNull().default(true),
+    announcements: integer("announcements", { mode: "boolean" }).notNull().default(true),
+    quietStart: text("quiet_start").notNull().default("22:00"),
+    quietEnd: text("quiet_end").notNull().default("08:00"),
+    timezone: text("timezone").notNull().default("Asia/Almaty"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [uniqueIndex("notification_preferences_user_uidx").on(table.userEmail)],
+);
+
+export const notificationDeliveries = sqliteTable(
+  "notification_deliveries",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    notificationId: integer("notification_id").notNull(),
+    userEmail: text("user_email").notNull(),
+    channel: text("channel").notNull(),
+    status: text("status").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: text("next_attempt_at"),
+    providerMessageId: text("provider_message_id"),
+    lastError: text("last_error"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    sentAt: text("sent_at"),
+    openedAt: text("opened_at"),
+  },
+  (table) => [
+    uniqueIndex("notification_deliveries_notification_channel_uidx").on(table.notificationId, table.channel),
+    index("notification_deliveries_status_next_idx").on(table.status, table.nextAttemptAt),
+    index("notification_deliveries_provider_idx").on(table.providerMessageId),
+  ],
+);
+
+export const notificationDeliveryEvents = sqliteTable(
+  "notification_delivery_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    webhookId: text("webhook_id").notNull(),
+    providerMessageId: text("provider_message_id").notNull(),
+    eventType: text("event_type").notNull(),
+    occurredAt: text("occurred_at").notNull(),
+    payloadJson: text("payload_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("notification_delivery_events_webhook_uidx").on(table.webhookId)],
+);
+
+export const teacherAnnouncements = sqliteTable(
+  "teacher_announcements",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    audienceType: text("audience_type").notNull(),
+    audienceValue: text("audience_value"),
+    actionUrl: text("action_url"),
+    recipientCount: integer("recipient_count").notNull().default(0),
+    status: text("status").notNull().default("sent"),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at").notNull(),
+    sentAt: text("sent_at").notNull(),
+  },
+  (table) => [index("teacher_announcements_created_idx").on(table.createdAt)],
+);
+
 export const staffRoles = sqliteTable(
   "staff_roles",
   {

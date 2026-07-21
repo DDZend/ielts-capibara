@@ -92,6 +92,13 @@
       "when": 1784626499741,
       "tag": "0012_rename_capy_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1784628043663,
+      "tag": "0013_mighty_senator_kelly",
+      "breakpoints": true
     }
   ]
 }

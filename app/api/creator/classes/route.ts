@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureAppSchema, getD1 } from "../../../../db";
 import { getStudentMeetingMembership, getTeacherClassSnapshot, validateStudentBooking } from "../../../../db/classes";
+import { notifyClassCancelled, notifyClassScheduled, notifyHomeworkAssigned, notifyTeacherComment } from "../../../../db/notifications";
 import { getApiCreatorUser } from "../../../creator-auth";
 
 export const dynamic = "force-dynamic";
@@ -113,9 +114,11 @@ export async function POST(request: NextRequest) {
       await getD1().prepare(`INSERT INTO class_bookings (session_id, student_email, status, booked_at, updated_at) VALUES (?, ?, 'booked', ?, ?)`)
         .bind(sessionId, studentEmail, now, now).run();
     }
+    await notifyClassScheduled(sessionId);
   } else if (action === "cancel_session") {
     const sessionId = numberValue(body?.sessionId);
     const reason = textValue(body?.reason, 300) || "Cancelled by teacher";
+    await notifyClassCancelled(sessionId, reason);
     await getD1().batch([
       getD1().prepare("UPDATE class_sessions SET status = 'cancelled', cancellation_reason = ?, cancelled_by = ?, cancelled_at = ?, updated_at = ? WHERE id = ? AND status = 'scheduled'").bind(reason, auth.user.email, now, now, sessionId),
       getD1().prepare("UPDATE class_bookings SET status = 'cancelled', cancelled_at = ?, cancellation_reason = ?, updated_at = ? WHERE session_id = ? AND status = 'booked'").bind(now, reason, now, sessionId),
@@ -139,8 +142,9 @@ export async function POST(request: NextRequest) {
     const targetValue = textValue(body?.targetValue, 180);
     const dueAt = isoValue(body?.dueAt);
     if (!title || !instructions || !targetValue || !dueAt || dueAt <= now) return NextResponse.json({ error: "Complete the homework, recipient and future due date." }, { status: 400 });
-    await getD1().prepare(`INSERT INTO homework_assignments (title, instructions, module, lesson_id, exercise_id, assigned_to_type, assigned_to_value, due_at, status, assigned_by, created_at)
+    const inserted = await getD1().prepare(`INSERT INTO homework_assignments (title, instructions, module, lesson_id, exercise_id, assigned_to_type, assigned_to_value, due_at, status, assigned_by, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`).bind(title, instructions, courseModule, lessonId, exerciseId, targetType, targetValue, dueAt, auth.user.email, now).run();
+    await notifyHomeworkAssigned(Number(inserted.meta.last_row_id));
   } else if (action === "review_homework") {
     const assignmentId = numberValue(body?.assignmentId);
     const studentEmail = textValue(body?.studentEmail, 160).toLowerCase();
@@ -149,12 +153,14 @@ export async function POST(request: NextRequest) {
     await getD1().prepare(`INSERT INTO homework_submissions (assignment_id, student_email, status, teacher_comment, reviewed_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(assignment_id, student_email) DO UPDATE SET status = excluded.status, teacher_comment = excluded.teacher_comment, reviewed_at = excluded.reviewed_at, updated_at = excluded.updated_at`)
       .bind(assignmentId, studentEmail, status, comment, now, now).run();
+    if (comment) await notifyTeacherComment(studentEmail, `homework:${assignmentId}:${now}`, comment);
   } else if (action === "add_note") {
     const studentEmail = textValue(body?.studentEmail, 160).toLowerCase();
     const note = textValue(body?.body, 2000);
     if (!emailPattern.test(studentEmail) || !note) return NextResponse.json({ error: "Choose a student and write a note." }, { status: 400 });
     await getD1().prepare("INSERT INTO student_notes (student_email, teacher_email, body, visible_to_student, created_at) VALUES (?, ?, ?, ?, ?)")
       .bind(studentEmail, auth.user.email, note, body?.visibleToStudent === true ? 1 : 0, now).run();
+    if (body?.visibleToStudent === true) await notifyTeacherComment(studentEmail, `note:${now}`, note);
   } else {
     return NextResponse.json({ error: "Unsupported class-management action." }, { status: 400 });
   }

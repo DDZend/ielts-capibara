@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureAppSchema, getD1 } from "../../../db";
 import { getStudentClassSnapshot, validateStudentBooking } from "../../../db/classes";
+import { notifyStudentBooking } from "../../../db/notifications";
 import { getChatGPTUser } from "../../chatgpt-auth";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
     await getD1().prepare(`INSERT INTO class_bookings (session_id, student_email, status, booked_at, updated_at) VALUES (?, ?, 'booked', ?, ?)
       ON CONFLICT(session_id, student_email) DO UPDATE SET status = 'booked', cancelled_at = NULL, cancellation_reason = NULL, updated_at = excluded.updated_at`)
       .bind(sessionId, user.email, now, now).run();
+    await notifyStudentBooking(user.email, sessionId, "booked");
   } else if (action === "cancel") {
     const sessionId = int(body?.sessionId);
     const reason = clean(body?.reason, 300) || "Cancelled by student";
@@ -50,6 +52,7 @@ export async function POST(request: NextRequest) {
         VALUES (?, ?, 'booked', ?, ?, ?) ON CONFLICT(session_id, student_email) DO UPDATE SET status = 'booked', cancelled_at = NULL, cancellation_reason = NULL, rescheduled_from_session_id = excluded.rescheduled_from_session_id, updated_at = excluded.updated_at`)
         .bind(toSessionId, user.email, now, fromSessionId, now),
     ]);
+    await notifyStudentBooking(user.email, toSessionId, "rescheduled");
   } else if (action === "submit_homework") {
     const assignmentId = int(body?.assignmentId);
     const note = clean(body?.studentNote, 2000);

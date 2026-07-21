@@ -22,3 +22,15 @@ Signed-in students receive a persistent three-task daily plan at `/dashboard`. T
 - `npm run db:generate` after changing `db/schema.ts`
 
 The generated D1 migration is stored in `drizzle/`. The logical production binding is `DB`.
+
+## Notification delivery
+
+In-platform notifications work with the D1 binding alone. Outbound email uses Resend and the following hosted environment values:
+
+- `RESEND_API_KEY` — server-side Resend API key.
+- `NOTIFICATION_FROM_EMAIL` — verified sender, for example `IELTS Mastery <updates@example.com>`.
+- `RESEND_WEBHOOK_SECRET` — signing secret for `/api/notifications/resend-webhook`.
+- `NOTIFICATION_CRON_SECRET` — a long random bearer token for `/api/notifications/dispatch`.
+- `PUBLIC_SITE_URL` — the production origin used in email buttons.
+
+Call `POST /api/notifications/dispatch` on a recurring schedule with `Authorization: Bearer <NOTIFICATION_CRON_SECRET>`. The same reminder cycle also runs when an authenticated student opens the notification centre or a teacher runs it manually from Creator Studio.

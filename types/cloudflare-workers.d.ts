@@ -42,5 +42,14 @@ interface R2Bucket {
 }
 
 declare module "cloudflare:workers" {
-  export const env: { DB: D1Database; MEDIA?: R2Bucket; TEACHER_EMAILS?: string };
+  export const env: {
+    DB: D1Database;
+    MEDIA?: R2Bucket;
+    TEACHER_EMAILS?: string;
+    RESEND_API_KEY?: string;
+    NOTIFICATION_FROM_EMAIL?: string;
+    RESEND_WEBHOOK_SECRET?: string;
+    NOTIFICATION_CRON_SECRET?: string;
+    PUBLIC_SITE_URL?: string;
+  };
 }

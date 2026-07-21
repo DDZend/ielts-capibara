@@ -51,7 +51,37 @@ test("all requested routes are present", async () => {
     access(new URL("app/api/creator/mock-tests/route.ts", root)),
     access(new URL("app/api/media/[id]/route.ts", root)),
     access(new URL("app/creator/capi-coach/page.tsx", root)),
+    access(new URL("app/creator/communications/page.tsx", root)),
+    access(new URL("app/api/notifications/route.ts", root)),
+    access(new URL("app/api/notifications/dispatch/route.ts", root)),
+    access(new URL("app/api/notifications/resend-webhook/route.ts", root)),
+    access(new URL("app/api/creator/communications/route.ts", root)),
   ]);
+});
+
+test("notification centre connects student preferences, teacher announcements, automation and auditable email delivery", async () => {
+  const [database, schema, runtimeSchema, migration, studentApi, teacherApi, webhook, studentUi, teacherUi, classApi, billing] = await Promise.all([
+    read("db/notifications.ts"), read("db/schema.ts"), read("db/index.ts"), read("drizzle/0013_mighty_senator_kelly.sql"),
+    read("app/api/notifications/route.ts"), read("app/api/creator/communications/route.ts"), read("app/api/notifications/resend-webhook/route.ts"),
+    read("app/dashboard/NotificationCenter.tsx"), read("app/creator/communications/CommunicationsClient.tsx"), read("app/api/creator/classes/route.ts"), read("db/billing.ts"),
+  ]);
+  for (const table of ["notifications", "notification_preferences", "notification_deliveries", "notification_delivery_events", "teacher_announcements"]) {
+    for (const source of [schema, runtimeSchema, migration]) assert.match(source, new RegExp(table));
+  }
+  assert.match(studentApi, /getApiLearningUser/);
+  assert.match(teacherApi, /getApiCreatorUser\("classes"\)/);
+  assert.match(database, /RESEND_API_KEY/);
+  assert.match(database, /Idempotency-Key/);
+  assert.match(database, /attempts < 5/);
+  for (const category of ["upcoming_class", "new_homework", "homework_deadline", "teacher_comment", "weekend_mock", "membership", "sponsored_pass", "weekly_report", "announcement"]) assert.match(database, new RegExp(category));
+  assert.match(webhook, /svix-signature/);
+  assert.match(webhook, /crypto\.subtle\.verify/);
+  assert.match(studentUi, /Quiet hours/);
+  assert.match(studentUi, /Email history/);
+  assert.match(teacherUi, /Write once, reach the right students/);
+  assert.match(teacherUi, /Every email attempt/);
+  for (const integration of ["notifyClassScheduled", "notifyHomeworkAssigned", "notifyTeacherComment"]) assert.match(classApi, new RegExp(integration));
+  assert.match(billing, /mirrorBillingNotification/);
 });
 
 test("Capy Coach is a grounded personalised tutor with limits, exam safety and teacher escalation", async () => {

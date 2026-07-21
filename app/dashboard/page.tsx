@@ -3,6 +3,7 @@ import { requireLearningAccess } from "../learning-access";
 import { getDashboardLearningData, getLatestAssessmentForEmail } from "../../db";
 import { DashboardClient } from "./DashboardClient";
 import { isCreatorEmail } from "../creator-auth";
+import { dispatchQueuedEmails, generateScheduledNotifications, getNotificationCenter } from "../../db/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,9 @@ export default async function DashboardPage() {
     createdAt: row.createdAt,
   } : null;
   const learning = await getDashboardLearningData(user.email, latest?.prioritySkill ?? "Reading");
+  await generateScheduledNotifications();
+  await dispatchQueuedEmails(5);
+  const notifications = await getNotificationCenter(user.email);
   const mocks = learning.mocks.map((mock) => ({
     id: mock.id,
     weekStart: mock.weekStart,
@@ -51,5 +55,5 @@ export default async function DashboardPage() {
     speakingConfidence: mock.speakingConfidence,
     createdAt: mock.createdAt,
   }));
-  return <DashboardClient userName={user.displayName} isCreator={await isCreatorEmail(user.email)} latest={latest} initialTasks={learning.tasks} recentTasks={learning.recent} initialStats={learning.stats} mocks={mocks} adaptivePriority={learning.adaptivePriority} moduleProgress={learning.moduleProgress} assessmentHistory={learning.assessmentHistory} weeklyReport={learning.weeklyReport} />;
+  return <DashboardClient userName={user.displayName} isCreator={await isCreatorEmail(user.email)} latest={latest} initialTasks={learning.tasks} recentTasks={learning.recent} initialStats={learning.stats} mocks={mocks} adaptivePriority={learning.adaptivePriority} moduleProgress={learning.moduleProgress} assessmentHistory={learning.assessmentHistory} weeklyReport={learning.weeklyReport} initialNotifications={notifications} />;
 }

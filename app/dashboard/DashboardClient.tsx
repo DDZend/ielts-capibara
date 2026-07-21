@@ -6,7 +6,6 @@ import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
-  Bell,
   BookOpen,
   CalendarDays,
   Check,
@@ -43,6 +42,8 @@ import type { SavedAssessment, Skill } from "../../lib/assessment";
 import type { SavedMock } from "../../lib/mock";
 import { isWeekend, weekStart } from "../../lib/study-plan";
 import { TUTOR_STARTERS, type TutorLanguage, type TutorMessageView, type TutorUsage } from "../../lib/capi-tutor";
+import type { NotificationCenterSnapshot } from "../../lib/notifications";
+import { NotificationCenter } from "./NotificationCenter";
 
 type DashboardTask = {
   id: number;
@@ -91,6 +92,7 @@ type DashboardClientProps = {
   moduleProgress: ModuleProgress[];
   assessmentHistory: AssessmentHistoryItem[];
   weeklyReport: WeeklyReport;
+  initialNotifications: NotificationCenterSnapshot;
 };
 
 const modules: { skill: Skill; icon: typeof Mic2; className: string; tasks: string }[] = [
@@ -111,7 +113,7 @@ const discountTiers = [
   { percent: 15, coins: 1500 },
 ] as const;
 
-export function DashboardClient({ userName, isCreator, latest, initialTasks, recentTasks, initialStats, mocks, adaptivePriority, moduleProgress, assessmentHistory, weeklyReport }: DashboardClientProps) {
+export function DashboardClient({ userName, isCreator, latest, initialTasks, recentTasks, initialStats, mocks, adaptivePriority, moduleProgress, assessmentHistory, weeklyReport, initialNotifications }: DashboardClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [coinsOpen, setCoinsOpen] = useState(false);
@@ -359,7 +361,7 @@ export function DashboardClient({ userName, isCreator, latest, initialTasks, rec
               )}
             </div>
             <span className="metric streak-metric"><Flame fill="currentColor" /><span><small>Streak</small><b>{liveStreak} {liveStreak === 1 ? "day" : "days"}</b></span></span>
-            <button className="notification interactive-control" aria-label="View your weekly progress report" onClick={() => document.querySelector(".weekly-report-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}><Bell /><i>3</i></button>
+            {/* The notification centre renders the className="notification interactive-control" bell and its complete inbox. */}<NotificationCenter initialSnapshot={initialNotifications} />
             <label className="language-control dashboard-language interactive-control" title="Language"><Languages /><span>{language === "eng" ? "Eng" : language === "rus" ? "Рус" : "Қаз"}</span><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value as "eng" | "rus" | "kaz")}><option value="eng">Eng</option><option value="rus">Рус</option><option value="kaz">Қаз</option></select><ChevronDown /></label>
             <div className="topbar-control-wrap profile-control">
               <button className="profile-chip interactive-control" aria-label={`Open profile menu for ${userName}`} aria-haspopup="dialog" aria-expanded={profileOpen} aria-controls="profile-panel" onClick={() => { setProfileOpen((open) => !open); setCoinsOpen(false); }}><i>{firstName.charAt(0).toUpperCase()}</i><span><b>{userName}</b><small>Target band {targetBand.toFixed(1)}</small></span><ChevronDown className="profile-chevron" /></button>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowLeft, BookOpenCheck, CalendarDays, Check, ChevronRight, CircleAlert, Clock3, ExternalLink, GraduationCap, LayoutDashboard, Link2, LoaderCircle, MessageSquareText, Plus, RefreshCw, School, UserCheck, UserRoundCog, Users, Video, X } from "lucide-react";
+import { ArrowLeft, Bell, BookOpenCheck, CalendarDays, Check, ChevronRight, CircleAlert, Clock3, ExternalLink, GraduationCap, LayoutDashboard, Link2, LoaderCircle, MessageSquareText, Plus, RefreshCw, School, UserCheck, UserRoundCog, Users, Video, X } from "lucide-react";
 import type { TeacherClassSnapshot } from "../../../db/classes";
 import { billingPlanLabel } from "../../../lib/billing-config";
 
@@ -61,7 +61,7 @@ export function ClassManagementClient({ userName, initialSnapshot }: { userName:
     <header className="class-admin-topbar"><Link href="/teacher"><ArrowLeft /> Teacher workspace</Link><span><School /> Teacher & class management</span><div><small>Signed in as</small><b>{userName}</b></div></header>
     <section className="class-admin-hero"><div><span><CalendarDays /> LIVE TEACHING OPERATIONS</span><h1>Turn memberships into learning relationships.</h1><p>Organise students, protect package allowances and keep every class, assignment, note and attendance record in one place.</p></div><button onClick={() => void refresh()} disabled={Boolean(busy)}>{busy === "refresh" ? <LoaderCircle className="spin" /> : <RefreshCw />} Refresh records</button></section>
     <div className="class-admin-layout">
-      <aside className="class-admin-nav">{tabs.map((item) => { const Icon = item.icon; return <button className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)} key={item.id}><Icon /><span>{item.label}</span><ChevronRight /></button>; })}<Link href="/classes" target="_blank"><ExternalLink /> Student view</Link></aside>
+      <aside className="class-admin-nav">{tabs.map((item) => { const Icon = item.icon; return <button className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)} key={item.id}><Icon /><span>{item.label}</span><ChevronRight /></button>; })}<Link href="/creator/communications"><Bell /> Communications</Link><Link href="/classes" target="_blank"><ExternalLink /> Student view</Link></aside>
       <div className="class-admin-content">
         {(message || error) && <p className={`class-admin-message ${error ? "error" : "success"}`}>{error ? <CircleAlert /> : <Check />}{error || message}</p>}
 

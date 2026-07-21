@@ -1,4 +1,5 @@
 import { ensureAppSchema, getD1 } from ".";
+import { mirrorBillingNotification } from "./notifications";
 
 export type ValidPromotion = { id: number; code: string; percentOff: number };
 
@@ -70,6 +71,7 @@ export async function addBillingNotification(input: {
     (user_email, stripe_event_id, kind, title, message, action_url, status, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 'unread', ?) ON CONFLICT(stripe_event_id) DO NOTHING`)
     .bind(input.userEmail, input.stripeEventId ?? null, input.kind, input.title, input.message, input.actionUrl ?? "/billing", now).run();
+  await mirrorBillingNotification({ userEmail: input.userEmail, eventId: input.stripeEventId, kind: input.kind, title: input.title, message: input.message, actionUrl: input.actionUrl });
 }
 
 export type MembershipAdminSnapshot = {

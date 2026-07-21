@@ -288,6 +288,46 @@ export function ensureAppSchema() {
       )`),
       getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS billing_notifications_event_uidx ON billing_notifications (stripe_event_id)"),
       getD1().prepare("CREATE INDEX IF NOT EXISTS billing_notifications_user_created_at_idx ON billing_notifications (user_email, created_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, source_key TEXT,
+        category TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, action_url TEXT,
+        priority TEXT NOT NULL DEFAULT 'normal', status TEXT NOT NULL DEFAULT 'unread',
+        created_at TEXT NOT NULL, read_at TEXT, opened_at TEXT
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS notifications_source_key_uidx ON notifications (source_key)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS notifications_user_status_created_idx ON notifications (user_email, status, created_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS notifications_category_created_idx ON notifications (category, created_at)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS notification_preferences (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL,
+        in_app_enabled INTEGER NOT NULL DEFAULT 1, email_enabled INTEGER NOT NULL DEFAULT 1,
+        upcoming_classes INTEGER NOT NULL DEFAULT 1, new_homework INTEGER NOT NULL DEFAULT 1,
+        homework_deadlines INTEGER NOT NULL DEFAULT 1, teacher_comments INTEGER NOT NULL DEFAULT 1,
+        weekend_mock INTEGER NOT NULL DEFAULT 1, membership INTEGER NOT NULL DEFAULT 1,
+        sponsored_pass INTEGER NOT NULL DEFAULT 1, weekly_report INTEGER NOT NULL DEFAULT 1,
+        announcements INTEGER NOT NULL DEFAULT 1, quiet_start TEXT NOT NULL DEFAULT '22:00',
+        quiet_end TEXT NOT NULL DEFAULT '08:00', timezone TEXT NOT NULL DEFAULT 'Asia/Almaty', updated_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS notification_preferences_user_uidx ON notification_preferences (user_email)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS notification_deliveries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, notification_id INTEGER NOT NULL, user_email TEXT NOT NULL,
+        channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued', attempts INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at TEXT, provider_message_id TEXT, last_error TEXT, created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL, sent_at TEXT, opened_at TEXT
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS notification_deliveries_notification_channel_uidx ON notification_deliveries (notification_id, channel)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS notification_deliveries_status_next_idx ON notification_deliveries (status, next_attempt_at)"),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS notification_deliveries_provider_idx ON notification_deliveries (provider_message_id)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS notification_delivery_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, webhook_id TEXT NOT NULL, provider_message_id TEXT NOT NULL,
+        event_type TEXT NOT NULL, occurred_at TEXT NOT NULL, payload_json TEXT NOT NULL, created_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE UNIQUE INDEX IF NOT EXISTS notification_delivery_events_webhook_uidx ON notification_delivery_events (webhook_id)"),
+      getD1().prepare(`CREATE TABLE IF NOT EXISTS teacher_announcements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, message TEXT NOT NULL,
+        audience_type TEXT NOT NULL, audience_value TEXT, action_url TEXT, recipient_count INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'sent', created_by TEXT NOT NULL, created_at TEXT NOT NULL, sent_at TEXT NOT NULL
+      )`),
+      getD1().prepare("CREATE INDEX IF NOT EXISTS teacher_announcements_created_idx ON teacher_announcements (created_at)"),
       getD1().prepare(`CREATE TABLE IF NOT EXISTS staff_roles (
         id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, display_name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'teacher', status TEXT NOT NULL DEFAULT 'invited', permissions_json TEXT NOT NULL DEFAULT '[]',
